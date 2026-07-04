@@ -2,27 +2,23 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Sistem Absensi Kejaksaan</title>
+    <title>Sistem Absensi Kejaksaan Negeri Maluku Tenggara</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; margin: 5px 0; }
-        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; background: #eef2f7; padding: 15px; border-radius: 6px; }
-        
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; color: #2c3e50; }
+        .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        th, td { border: 1px solid #7f8c8d; padding: 4px; text-align: center; }
+        th, td { border: 1px solid #b2bec3; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
-        
-        /* Fitur Repeat Header */
         thead { display: table-header-group; }
-        
-        .input-absen { width: 25px; text-align: center; border: none; font-weight: bold; text-transform: uppercase; }
+        .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; }
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
-        
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 400px; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
     </style>
 </head>
 <body>
@@ -31,10 +27,15 @@
     <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
     <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
     <div class="controls">
-        <select id="bulan" onchange="render()"><option value="0">Januari</option><option value="5" selected>Juni</option><option value="9">Oktober</option></select>
-        <input type="number" id="tahun" value="2026" onchange="render()">
-        <button onclick="bukaModalPDF()" style="background:#c0392b; color:white;">Cetak PDF</button>
-        <button onclick="eksporTXT()" style="background:#27ae60; color:white;">Ekspor ADK TXT</button>
+        <select id="bulan" onchange="render()">
+            <option value="0">Januari</option><option value="1">Februari</option><option value="2">Maret</option>
+            <option value="3">April</option><option value="4">Mei</option><option value="5" selected>Juni</option>
+            <option value="6">Juli</option><option value="7">Agustus</option><option value="8">September</option>
+            <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
+        </select>
+        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px;">
+        <button onclick="bukaModalPDF()" style="background:#c0392b;">Cetak PDF</button>
+        <button onclick="eksporTXT()" style="background:#27ae60;">Ekspor ADK TXT</button>
     </div>
     <div class="table-wrapper" id="tabelWrapper">
         <table id="tabel">
@@ -48,12 +49,12 @@
     <div class="modal-content">
         <h3>Pengaturan Cetak PDF</h3>
         Lokasi: <input type="text" id="lokasi" value="Langgur" style="width:90%"><br><br>
-        Tanggal: <input type="text" id="tanggal" value="07 Mei 2026" style="width:90%"><br><br>
+        Tanggal: <input type="text" id="tanggal" value="" style="width:90%"><br><br>
         Jabatan: <input type="text" id="jabatan" value="Kepala Kejaksaan Negeri Maluku Tenggara" style="width:90%"><br><br>
         Pejabat: <input type="text" id="pejabat" value="Dr. Fadjar, S.H., M.H." style="width:90%"><br><br>
         NIP: <input type="text" id="nip" value="197411112002121003" style="width:90%"><br><br>
-        <button onclick="cetakPDF()">Konfirmasi & Cetak</button>
-        <button onclick="document.getElementById('modal').style.display='none'">Batal</button>
+        <button onclick="cetakPDF()" style="background:#2980b9;">Konfirmasi & Cetak</button>
+        <button onclick="document.getElementById('modal').style.display='none'" style="background:#95a5a6;">Batal</button>
     </div>
 </div>
 
@@ -99,7 +100,10 @@ function hitung(i, jml) {
     for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
 }
 
-function bukaModalPDF() { document.getElementById('modal').style.display = 'flex'; }
+function bukaModalPDF() { 
+    document.getElementById('tanggal').value = new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
+    document.getElementById('modal').style.display = 'flex'; 
+}
 
 function cetakPDF() {
     document.getElementById('modal').style.display = 'none';
@@ -130,7 +134,6 @@ function eksporTXT() {
     const blob = new Blob([teks], {type: "text/plain"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ADK_Uang_Makan.txt"; a.click();
 }
-
 render();
 </script>
 </body>
