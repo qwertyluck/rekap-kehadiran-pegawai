@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Sistem Absensi Kejaksaan Negeri Maluku Tenggara</title>
+    
+    <!-- Library SheetJS untuk fitur Ekspor ke Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
@@ -18,7 +22,8 @@
         
         .nama-kolom { text-align: left; min-width: 200px; font-weight: bold; background-color: #f9f9f9; }
         .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
-        .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; }
+        .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; outline: none; }
+        .input-absen:focus { background-color: #e1f5fe; }
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
         
         /* Hari Libur Merah (Terkunci) */
@@ -27,7 +32,8 @@
         /* Gaya Pop-up (Modal) */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
         .form-group { margin-bottom: 12px; text-align: left; }
         .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; font-family: inherit; }
 
@@ -38,26 +44,20 @@
         /* PENGATURAN CETAK (PRINT) - SOLUSI REPEAT HEADER & KERTAS F4 */
         /* ======================================================== */
         @media print {
-            @page { 
-                size: 330mm 210mm landscape; /* Ukuran Kertas F4 */
-                margin: 10mm; /* Margin rapi */
-            }
+            @page { size: 330mm 210mm landscape; margin: 10mm; }
             body { background: white; padding: 0; }
             .container { box-shadow: none; padding: 0; max-width: 100%; }
             
             /* Sembunyikan semua tombol dan elemen yang tidak perlu dicetak */
             .no-print, .controls, .modal { display: none !important; }
-            
-            /* Tampilkan Kop dan Tanda Tangan */
             .only-print { display: block; }
             
             /* KUNCI UTAMA: Agar baris judul tabel terulang di setiap halaman */
             thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; } /* Mencegah baris terpotong di tengah halaman */
+            tr { page-break-inside: avoid !important; } 
             
             /* Memaksa browser mencetak warna latar merah untuk hari libur */
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            
             th { color: black !important; background-color: #dcdde1 !important; }
             
             /* Sembunyikan input box saat dicetak, ganti dengan teks */
@@ -65,28 +65,27 @@
             .print-val { display: inline !important; font-weight: bold; }
         }
         
-        /* Sembunyikan nilai cetak (print-val) saat sedang di web */
         .print-val { display: none; }
     </style>
 </head>
 <body>
 
+<!-- Kotak Dialog Pembuka -->
 <div id="modalInstruksi" class="modal">
     <div class="modal-content">
-        <h3 style="text-align: center; color: #2980b9;">Informasi File Kerja</h3>
-        <p>File ini dibuat dan dikembangkan oleh: <strong>Jalo Tuharea</strong></p>
-        <p><strong>Tata cara penggunaan:</strong></p>
-        <ol>
-            <li>Pilih Bulan dan Tahun yang sesuai.</li>
-            <li>Input data kehadiran (H, I, S, DL, CT, A).</li>
-            <li>H=Hadir, I=Izin, S=Sakit, DL=Dinas Luar, CT=Cuti dan A=Alpa.</li>
-            <li>Hari Sabtu & Minggu otomatis terkunci (Warna Merah).</li>
-            <li>Klik tombol Cetak PDF atau Ekspor ADK.</li>
-        </ol>
-        <button onclick="document.getElementById('modalInstruksi').style.display='none'" style="background:#2980b9; width:100%;">Saya Mengerti, Lanjutkan</button>
+        <h3 style="text-align: center; color: #2980b9;">Sistem Absensi (Auto-Save Aktif)</h3>
+        <p>File ini dikembangkan oleh: <strong>Jalo Tuharea</strong></p>
+        <p><strong>Pembaruan Tahap 1:</strong></p>
+        <ul style="font-size: 14px;">
+            <li>✅ Data otomatis tersimpan saat Anda mengetik.</li>
+            <li>✅ Libur Nasional ditarik otomatis dari sistem.</li>
+            <li>✅ Fitur Ekspor ke Ms. Excel telah ditambahkan.</li>
+        </ul>
+        <button onclick="document.getElementById('modalInstruksi').style.display='none'" style="background:#2980b9; width:100%;">Mulai Bekerja</button>
     </div>
 </div>
 
+<!-- Kotak Dialog Cetak -->
 <div id="modalPDF" class="modal" style="display:none;">
     <div class="modal-content">
         <h3 style="text-align: center; color: #c0392b;">Pengaturan Dokumen Cetak</h3>
@@ -102,17 +101,20 @@
 
 <div class="container">
     
+    <!-- Judul versi Web -->
     <div class="no-print">
         <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
         <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
     </div>
     
+    <!-- Kop Resmi Cetak -->
     <div class="only-print" style="text-align: center; margin-bottom: 20px;">
         <h2 style="margin:0; font-size: 16px;">REKAPITULASI ABSENSI PEGAWAI</h2>
         <h3 style="margin:5px 0; font-size: 14px;">KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
         <h4 id="cetakPeriode" style="margin:0; font-size: 12px; font-weight: normal;"></h4>
     </div>
 
+    <!-- Panel Kontrol -->
     <div class="controls no-print">
         <select id="bulan" onchange="render()">
             <option value="0">Januari</option><option value="1">Februari</option><option value="2">Maret</option>
@@ -120,11 +122,14 @@
             <option value="6">Juli</option><option value="7">Agustus</option><option value="8">September</option>
             <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
         </select>
-        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 80px;">
+        <input type="number" id="tahun" value="2026" onchange="gantiTahun()" style="width: 80px;">
+        
         <button onclick="bukaModalCetak()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
+        <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Ekspor Excel</button>
         <button onclick="eksporTXT()" style="background:#27ae60;">📥 Ekspor ADK TXT</button>
     </div>
 
+    <!-- Tabel Rekapitulasi -->
     <div class="table-wrapper">
         <table id="tabelUtama">
             <thead></thead>
@@ -132,6 +137,7 @@
         </table>
     </div>
 
+    <!-- Area Tanda Tangan Cetak -->
     <div class="only-print" style="margin-top: 40px; page-break-inside: avoid;">
         <table style="width: 100%; border: none; font-size: 12px;">
             <tr style="border: none;">
@@ -146,69 +152,105 @@
             </tr>
         </table>
     </div>
-
 </div>
 
 <script>
-// Data Master Pegawai
 const pegawai = [
-    {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, 
+    {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"},
     {n:"JHON THIMOTIUS PADALANI, SH", nip:"199309012019021010"}, {n:"RAMDHANI", nip:"198306222002121005"},
     {n:"RIGO ROLYS ATARWAMAN, A.Md", nip:"198502192009121003"}, {n:"MAHESA ARYO BIMO, S.H.", nip:"199905112022031002"},
     {n:"RAMLI BUGIS, SH", nip:"197606121998031005"}, {n:"VINDRIANITA, A.Md.KOM", nip:"199804132022032005"},
     {n:"KETUT IRWAN RISWANDI", nip:"199806172022031003"}, {n:"HENDRY JODIE PAIMIN, A.Md", nip:"199407252022031002"},
-    {n:"BUDIWAN ALI", nip:"198802192020121007"}, 
-    {n:"Dr.FADJAR, SH,MH.", nip:"197411112002121002"}, {n:"SAIFUL ANWAR", nip:"198203102002121003"},
+    {n:"BUDIWAN ALI", nip:"198802192020121007"}, {n:"AVEL HAEZER MATANDE, SH", nip:"199407052019021007"},
+    {n:"FADJAR, SH.", nip:"197411112002121002"}, {n:"SAIFUL ANWAR", nip:"198203102002121003"},
     {n:"RAIHAN THAHIR, SH", nip:"199706032024041002"}, {n:"MHD. WALID R. NASUTION, S.H.", nip:"199712302024041001"},
     {n:"JARU YEHEZKIEL, S.H.", nip:"199901142024041003"}, {n:"TARUNA ADI PERKASA", nip:"199704182024041003"},
     {n:"DWI SETIYAWAN NUGROHO, SH", nip:"199405122018011005"}, {n:"DAIKAN AOLIA ARFAN, SH.", nip:"199007012015011001"},
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
 
-// Data Tanggal Libur Nasional (Format: YYYY-MM-DD)
-const liburNasional = ["2026-01-01", "2026-02-17", "2026-05-01"]; 
+let liburNasional = []; 
+
+// Fungsi 1: Menarik Data Libur dari API
+async function gantiTahun() {
+    const t = document.getElementById('tahun').value;
+    try {
+        let response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${t}/ID`);
+        if (response.ok) {
+            let data = await response.json();
+            liburNasional = data.map(item => item.date);
+        }
+    } catch (error) {
+        console.log("API Hari Libur gagal diakses, mengandalkan libur akhir pekan.");
+    }
+    render(); // Muat ulang kalender setelah data didapat
+}
 
 function render() {
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jmlHari = new Date(t, b+1, 0).getDate();
     
-    // Buat Judul Kolom (TANGGAL & REKAP)
+    // Ambil data yang tersimpan di LocalStorage (Auto-Save)
+    const kunciSimpan = `absensi_${t}_${b}`;
+    const dataTersimpan = JSON.parse(localStorage.getItem(kunciSimpan)) || {};
+    
+    // Header
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
-    // Buat Baris Pegawai
+    // Body
     let body = "";
     pegawai.forEach((p, i) => {
         body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
         
         for(let d=1; d<=jmlHari; d++) {
             let tglObj = new Date(t, b, d);
-            
-            // Konversi tanggal ke format YYYY-MM-DD untuk dicocokkan dengan hari libur nasional
             let monthStr = String(b + 1).padStart(2, '0');
             let dayStr = String(d).padStart(2, '0');
             let tglStr = `${t}-${monthStr}-${dayStr}`;
             
-            // Cek jika Sabtu (6), Minggu (0), atau Libur Nasional
             let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStr));
             
+            // Muat nilai yang tersimpan (jika ada)
+            let nilaiInput = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : "";
+            
             body += `<td class="${isLibur ? 'libur' : ''}">
-                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="1" 
-                ${isLibur ? 'disabled' : `onkeyup="hitung(${i}, ${jmlHari})"`} >
-                <span class="print-val" id="val-${i}-${d}"></span>
+                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="1" value="${nilaiInput}"
+                ${isLibur ? 'disabled' : `onkeyup="hitung(${i}, ${jmlHari}); simpanDataLokal();"`} >
+                <span class="print-val" id="val-${i}-${d}">${nilaiInput}</span>
             </td>`;
         }
-        
         body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
     });
     
     document.querySelector('tbody').innerHTML = body;
+    
+    // Hitung ulang semua rekapitulasi saat halaman baru dimuat
+    pegawai.forEach((p, i) => hitung(i, jmlHari));
 }
 
-// Menghitung Jumlah Status Secara Otomatis
+// Fungsi 2: Simpan Otomatis (Auto-Save)
+function simpanDataLokal() {
+    const b = document.getElementById('bulan').value;
+    const t = document.getElementById('tahun').value;
+    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    
+    let dataAbsen = {};
+    pegawai.forEach((p, i) => {
+        let barisData = {};
+        for(let d=1; d<=jmlHari; d++) {
+            let el = document.getElementById(`i-${i}-${d}`);
+            if(el && el.value) barisData[d] = el.value.toUpperCase();
+        }
+        dataAbsen[i] = barisData;
+    });
+    
+    localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(dataAbsen));
+}
+
 function hitung(i, jml) {
     let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
     for(let d=1; d<=jml; d++) {
@@ -218,8 +260,6 @@ function hitung(i, jml) {
         if(el && !el.disabled) {
             let v = el.value.toUpperCase();
             if(r.hasOwnProperty(v)) r[v]++;
-            
-            // Salin nilai input ke dalam span tersembunyi untuk persiapan cetak PDF
             spanVal.innerText = v;
         }
     }
@@ -227,33 +267,56 @@ function hitung(i, jml) {
 }
 
 function bukaModalCetak() { 
-    // Mengatur tanggal otomatis hari ini
     document.getElementById('tanggal').value = new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
     document.getElementById('modalPDF').style.display = 'flex'; 
 }
 
 function prosesCetak() {
-    // 1. Tutup Kotak Dialog
     document.getElementById('modalPDF').style.display = 'none';
-    
-    // 2. Isi data Kop Surat sesuai bulan yang dipilih
     const dropdownBulan = document.getElementById('bulan');
-    const namaBulan = dropdownBulan.options[dropdownBulan.selectedIndex].text.toUpperCase();
-    const tahun = document.getElementById('tahun').value;
-    document.getElementById('cetakPeriode').innerText = `PERIODE BULAN ${namaBulan} ${tahun}`;
-    
-    // 3. Isi data Tanda Tangan
+    document.getElementById('cetakPeriode').innerText = `PERIODE BULAN ${dropdownBulan.options[dropdownBulan.selectedIndex].text.toUpperCase()} ${document.getElementById('tahun').value}`;
     document.getElementById('cetakLokasiTgl').innerText = `${document.getElementById('lokasi').value}, ${document.getElementById('tanggal').value}`;
     document.getElementById('cetakJabatan').innerText = document.getElementById('jabatan').value;
     document.getElementById('cetakPejabat').innerText = document.getElementById('pejabat').value;
     document.getElementById('cetakNip').innerText = `NIP. ${document.getElementById('nip').value}`;
-    
-    // 4. Perintah cetak menggunakan fungsi bawaan (Native Print Browser)
-    // Fungsi ini 100% menjamin 'Repeat Header' tabel pada kertas PDF berfungsi dengan sempurna
     window.print();
 }
 
-// Fitur Export ke ADK (Format .txt)
+// Fungsi 3: Ekspor Excel (.xlsx)
+function eksporExcel() {
+    const b = parseInt(document.getElementById('bulan').value);
+    const t = parseInt(document.getElementById('tahun').value);
+    const namaBulan = document.getElementById('bulan').options[b].text;
+    const jmlHari = new Date(t, b+1, 0).getDate();
+    
+    let ws_data = [];
+    
+    // Header Excel
+    let header = ["NO", "NAMA PEGAWAI", "NIP"];
+    for(let d=1; d<=jmlHari; d++) header.push(d);
+    header.push("H","I","S","DL","CT","A");
+    ws_data.push(header);
+    
+    // Isi Data Excel
+    pegawai.forEach((p, i) => {
+        let row = [i+1, p.n, p.nip];
+        for(let d=1; d<=jmlHari; d++) {
+            let el = document.getElementById(`i-${i}-${d}`);
+            row.push(el ? el.value.toUpperCase() : "");
+        }
+        // Masukkan Hasil Rekap
+        ['H','I','S','DL','CT','A'].forEach(kode => {
+            row.push(document.getElementById(`r${kode}-${i}`).innerText);
+        });
+        ws_data.push(row);
+    });
+    
+    let ws = XLSX.utils.aoa_to_sheet(ws_data);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rekap Absensi");
+    XLSX.writeFile(wb, `Rekap_Absensi_${namaBulan}_${t}.xlsx`);
+}
+
 function eksporTXT() {
     let teks = "";
     const b = parseInt(document.getElementById('bulan').value);
@@ -268,18 +331,14 @@ function eksporTXT() {
         }
     });
     
-    if (teks === "") {
-        alert("Tidak ada data kehadiran (H) yang ditemukan.");
-        return;
-    }
+    if (teks === "") return alert("Tidak ada data kehadiran (H).");
     
     const blob = new Blob([teks], {type: "text/plain"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ADK_Uang_Makan.txt"; a.click();
 }
 
-// Render kalender saat website pertama kali dibuka
-render();
+// Jalankan penarikan API tahun saat web pertama dibuka
+window.onload = () => { gantiTahun(); };
 </script>
 </body>
-                       </html>
-                                   
+</html>
