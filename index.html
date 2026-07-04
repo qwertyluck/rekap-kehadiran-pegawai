@@ -10,26 +10,57 @@
         h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         
+        /* Tabel */
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
-        
-        /* Agar Judul Tabel muncul di setiap halaman PDF */
         thead { display: table-header-group; }
         
+        .nama-kolom { text-align: left; min-width: 220px; font-weight: bold; background-color: #f9f9f9; }
+        .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
         .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; }
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
         
-        /* Hari Libur = Merah Muda */
+        /* Hari Libur Merah */
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         
+        /* Modal */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
+
+<div id="modalInstruksi" class="modal">
+    <div class="modal-content">
+        <h3>Informasi File Kerja</h3>
+        <p>File ini dibuat oleh: <strong>Jalo Tuharea</strong></p>
+        <p><strong>Tata cara penggunaan:</strong></p>
+        <ol>
+            <li>Pilih Bulan dan Tahun yang sesuai.</li>
+            <li>Input data absensi (H, I, S, DL, CT, A).</li>
+            <li>Klik tombol cetak PDF atau Ekspor ADK.</li>
+        </ol>
+        <button onclick="document.getElementById('modalInstruksi').style.display='none'" style="background:#2980b9; width:100%;">Lanjutkan</button>
+    </div>
+</div>
+
+<div id="modalPDF" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Pengaturan Cetak PDF</h3>
+        <div class="form-group"><label>Lokasi:</label><input type="text" id="lokasi" value="Langgur"></div>
+        <div class="form-group"><label>Tanggal:</label><input type="text" id="tanggal"></div>
+        <div class="form-group"><label>Jabatan:</label><input type="text" id="jabatan" value="Kepala Kejaksaan Negeri Maluku Tenggara"></div>
+        <div class="form-group"><label>Pejabat:</label><input type="text" id="pejabat" value="Dr. Fadjar, S.H., M.H."></div>
+        <div class="form-group"><label>NIP:</label><input type="text" id="nip" value="197411112002121003"></div>
+        <button onclick="cetakPDF()" style="background:#2980b9; width:100%;">Konfirmasi & Cetak</button>
+        <button onclick="document.getElementById('modalPDF').style.display='none'" style="background:#95a5a6; width:100%;">Batal</button>
+    </div>
+</div>
 
 <div class="container">
     <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
@@ -53,19 +84,6 @@
     </div>
 </div>
 
-<div id="modal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <h3>Pengaturan Cetak PDF</h3>
-        Lokasi: <input type="text" id="lokasi" value="Langgur" style="width:90%"><br><br>
-        Tanggal: <input type="text" id="tanggal" value="" style="width:90%"><br><br>
-        Jabatan: <input type="text" id="jabatan" value="Kepala Kejaksaan Negeri Maluku Tenggara" style="width:90%"><br><br>
-        Pejabat: <input type="text" id="pejabat" value="Dr. Fadjar, S.H., M.H." style="width:90%"><br><br>
-        NIP: <input type="text" id="nip" value="197411112002121003" style="width:90%"><br><br>
-        <button onclick="cetakPDF()" style="background:#2980b9;">Konfirmasi & Cetak</button>
-        <button onclick="document.getElementById('modal').style.display='none'" style="background:#95a5a6;">Batal</button>
-    </div>
-</div>
-
 <script>
 const pegawai = [
     {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"},
@@ -81,14 +99,12 @@ const pegawai = [
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
 
-// Daftar Hari Libur Nasional 2026 (Opsional: bisa ditambah sendiri)
 const liburNasional = ["2026-01-01", "2026-02-17", "2026-05-01"]; 
 
 function render() {
     const b = document.getElementById('bulan').value;
     const t = document.getElementById('tahun').value;
     const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
-    
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
@@ -96,12 +112,11 @@ function render() {
 
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td style="text-align:left">${p.n}<br><small>${p.nip}</small></td>`;
+        body += `<tr><td>${i+1}</td><td style="text-align:left">${p.n}<br><small class="nip-teks">${p.nip}</small></td>`;
         for(let d=1; d<=jmlHari; d++) {
             let tglObj = new Date(t, b, d);
             let tglStr = tglObj.toISOString().split('T')[0];
             let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStr));
-            
             body += `<td class="${isLibur ? 'libur' : ''}">
                 <input class="input-absen" id="i-${i}-${d}" maxlength="1" 
                 ${isLibur ? 'disabled' : 'onkeyup="hitung('+i+', '+jmlHari+')"'} >
@@ -126,11 +141,11 @@ function hitung(i, jml) {
 
 function bukaModalPDF() { 
     document.getElementById('tanggal').value = new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
-    document.getElementById('modal').style.display = 'flex'; 
+    document.getElementById('modalPDF').style.display = 'flex'; 
 }
 
 function cetakPDF() {
-    document.getElementById('modal').style.display = 'none';
+    document.getElementById('modalPDF').style.display = 'none';
     const loc = document.getElementById('lokasi').value;
     const tgl = document.getElementById('tanggal').value;
     const jab = document.getElementById('jabatan').value;
