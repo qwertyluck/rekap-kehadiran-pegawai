@@ -3,89 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <title>Sistem Absensi Kejaksaan Negeri Maluku Tenggara</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
+        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         
-        /* Tabel */
+        /* Tabel & Tampilan Kolom */
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
-        thead { display: table-header-group; }
         
-        .nama-kolom { text-align: left; min-width: 220px; font-weight: bold; background-color: #f9f9f9; }
+        .nama-kolom { text-align: left; min-width: 200px; font-weight: bold; background-color: #f9f9f9; }
         .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
         .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; }
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
         
-        /* Hari Libur Merah */
+        /* Hari Libur Merah (Terkunci) */
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         
-        /* Modal */
-        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
+        /* Gaya Pop-up (Modal) */
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
         .form-group { margin-bottom: 12px; text-align: left; }
-        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; font-family: inherit; }
+
+        /* Elemen khusus yang hanya muncul saat dicetak */
+        .only-print { display: none; }
+
+        /* ======================================================== */
+        /* PENGATURAN CETAK (PRINT) - SOLUSI REPEAT HEADER & KERTAS F4 */
+        /* ======================================================== */
+        @media print {
+            @page { 
+                size: 330mm 210mm landscape; /* Ukuran Kertas F4 */
+                margin: 10mm; /* Margin rapi */
+            }
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; }
+            
+            /* Sembunyikan semua tombol dan elemen yang tidak perlu dicetak */
+            .no-print, .controls, .modal { display: none !important; }
+            
+            /* Tampilkan Kop dan Tanda Tangan */
+            .only-print { display: block; }
+            
+            /* KUNCI UTAMA: Agar baris judul tabel terulang di setiap halaman */
+            thead { display: table-header-group !important; }
+            tr { page-break-inside: avoid !important; } /* Mencegah baris terpotong di tengah halaman */
+            
+            /* Memaksa browser mencetak warna latar merah untuk hari libur */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            th { color: black !important; background-color: #dcdde1 !important; }
+            
+            /* Sembunyikan input box saat dicetak, ganti dengan teks */
+            .input-absen { display: none !important; }
+            .print-val { display: inline !important; font-weight: bold; }
+        }
+        
+        /* Sembunyikan nilai cetak (print-val) saat sedang di web */
+        .print-val { display: none; }
     </style>
 </head>
 <body>
 
 <div id="modalInstruksi" class="modal">
     <div class="modal-content">
-        <h3>Informasi Sistem Absensi</h3>
-        <p>File ini dibuat oleh: <strong>Jalo Tuharea</strong></p>
+        <h3 style="text-align: center; color: #2980b9;">Informasi File Kerja</h3>
+        <p>File ini dibuat dan dikembangkan oleh: <strong>Jalo Tuharea</strong></p>
         <p><strong>Tata cara penggunaan:</strong></p>
         <ol>
             <li>Pilih Bulan dan Tahun yang sesuai.</li>
-            <li>Input data absensi (H, I, S, DL, CT, A).</li>
-            <li>Hari Sabtu & Minggu otomatis terkunci (Libur).</li>
+            <li>Input data kehadiran (H, I, S, DL, CT, A).</li>
+            <li>H=Hadir, I=Izin, S=Sakit, DL=Dinas Luar, CT=Cuti dan A=Alpa.</li>
+            <li>Hari Sabtu & Minggu otomatis terkunci (Warna Merah).</li>
             <li>Klik tombol Cetak PDF atau Ekspor ADK.</li>
         </ol>
-        <button onclick="document.getElementById('modalInstruksi').style.display='none'" style="background:#2980b9; width:100%;">Lanjutkan</button>
+        <button onclick="document.getElementById('modalInstruksi').style.display='none'" style="background:#2980b9; width:100%;">Saya Mengerti, Lanjutkan</button>
     </div>
 </div>
 
 <div id="modalPDF" class="modal" style="display:none;">
     <div class="modal-content">
-        <h3>Pengaturan Cetak PDF</h3>
+        <h3 style="text-align: center; color: #c0392b;">Pengaturan Dokumen Cetak</h3>
         <div class="form-group"><label>Lokasi:</label><input type="text" id="lokasi" value="Langgur"></div>
         <div class="form-group"><label>Tanggal:</label><input type="text" id="tanggal"></div>
         <div class="form-group"><label>Jabatan:</label><input type="text" id="jabatan" value="Kepala Kejaksaan Negeri Maluku Tenggara"></div>
         <div class="form-group"><label>Pejabat:</label><input type="text" id="pejabat" value="Dr. Fadjar, S.H., M.H."></div>
         <div class="form-group"><label>NIP:</label><input type="text" id="nip" value="197411112002121003"></div>
-        <button onclick="cetakPDF()" style="background:#2980b9; width:100%;">Konfirmasi & Cetak</button>
+        <button onclick="prosesCetak()" style="background:#2980b9; width:100%;">Konfirmasi & Cetak Laporan</button>
         <button onclick="document.getElementById('modalPDF').style.display='none'" style="background:#95a5a6; width:100%;">Batal</button>
     </div>
 </div>
 
 <div class="container">
-    <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
-    <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
-    <div class="controls">
+    
+    <div class="no-print">
+        <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
+        <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
+    </div>
+    
+    <div class="only-print" style="text-align: center; margin-bottom: 20px;">
+        <h2 style="margin:0; font-size: 16px;">REKAPITULASI ABSENSI PEGAWAI</h2>
+        <h3 style="margin:5px 0; font-size: 14px;">KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
+        <h4 id="cetakPeriode" style="margin:0; font-size: 12px; font-weight: normal;"></h4>
+    </div>
+
+    <div class="controls no-print">
         <select id="bulan" onchange="render()">
             <option value="0">Januari</option><option value="1">Februari</option><option value="2">Maret</option>
             <option value="3">April</option><option value="4">Mei</option><option value="5" selected>Juni</option>
             <option value="6">Juli</option><option value="7">Agustus</option><option value="8">September</option>
             <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
         </select>
-        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px;">
-        <button onclick="bukaModalPDF()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
+        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 80px;">
+        <button onclick="bukaModalCetak()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
         <button onclick="eksporTXT()" style="background:#27ae60;">📥 Ekspor ADK TXT</button>
     </div>
-    <div class="table-wrapper" id="tabelWrapper">
-        <table id="tabel">
+
+    <div class="table-wrapper">
+        <table id="tabelUtama">
             <thead></thead>
             <tbody></tbody>
         </table>
     </div>
+
+    <div class="only-print" style="margin-top: 40px; page-break-inside: avoid;">
+        <table style="width: 100%; border: none; font-size: 12px;">
+            <tr style="border: none;">
+                <td style="width: 65%; border: none;"></td>
+                <td style="width: 35%; border: none; text-align: center; vertical-align: top;">
+                    <span id="cetakLokasiTgl"></span><br>
+                    Mengetahui,<br>
+                    <span id="cetakJabatan"></span><br><br><br><br><br>
+                    <u><b id="cetakPejabat"></b></u><br>
+                    <span id="cetakNip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
 </div>
 
 <script>
+// Data Master Pegawai
 const pegawai = [
     {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"},
     {n:"JHON THIMOTIUS PADALANI, SH", nip:"199309012019021010"}, {n:"RAMDHANI", nip:"198306222002121005"},
@@ -100,89 +165,121 @@ const pegawai = [
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
 
+// Data Tanggal Libur Nasional (Format: YYYY-MM-DD)
 const liburNasional = ["2026-01-01", "2026-02-17", "2026-05-01"]; 
 
 function render() {
-    const b = document.getElementById('bulan').value;
-    const t = document.getElementById('tahun').value;
-    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    const b = parseInt(document.getElementById('bulan').value);
+    const t = parseInt(document.getElementById('tahun').value);
+    const jmlHari = new Date(t, b+1, 0).getDate();
+    
+    // Buat Judul Kolom (TANGGAL & REKAP)
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
+    // Buat Baris Pegawai
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><small class="nip-teks">${p.nip}</small></td>`;
+        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
+        
         for(let d=1; d<=jmlHari; d++) {
             let tglObj = new Date(t, b, d);
-            let tglStr = tglObj.toISOString().split('T')[0];
+            
+            // Konversi tanggal ke format YYYY-MM-DD untuk dicocokkan dengan hari libur nasional
+            let monthStr = String(b + 1).padStart(2, '0');
+            let dayStr = String(d).padStart(2, '0');
+            let tglStr = `${t}-${monthStr}-${dayStr}`;
+            
+            // Cek jika Sabtu (6), Minggu (0), atau Libur Nasional
             let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStr));
+            
             body += `<td class="${isLibur ? 'libur' : ''}">
-                <input class="input-absen" id="i-${i}-${d}" maxlength="1" 
-                ${isLibur ? 'disabled' : 'onkeyup="hitung('+i+', '+jmlHari+')"'} >
+                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="1" 
+                ${isLibur ? 'disabled' : `onkeyup="hitung(${i}, ${jmlHari})"`} >
+                <span class="print-val" id="val-${i}-${d}"></span>
             </td>`;
         }
+        
         body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
     });
+    
     document.querySelector('tbody').innerHTML = body;
 }
 
+// Menghitung Jumlah Status Secara Otomatis
 function hitung(i, jml) {
     let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
     for(let d=1; d<=jml; d++) {
         let el = document.getElementById(`i-${i}-${d}`);
+        let spanVal = document.getElementById(`val-${i}-${d}`);
+        
         if(el && !el.disabled) {
             let v = el.value.toUpperCase();
             if(r.hasOwnProperty(v)) r[v]++;
+            
+            // Salin nilai input ke dalam span tersembunyi untuk persiapan cetak PDF
+            spanVal.innerText = v;
         }
     }
     for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
 }
 
-function bukaModalPDF() { 
+function bukaModalCetak() { 
+    // Mengatur tanggal otomatis hari ini
     document.getElementById('tanggal').value = new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
     document.getElementById('modalPDF').style.display = 'flex'; 
 }
 
-function cetakPDF() {
+function prosesCetak() {
+    // 1. Tutup Kotak Dialog
     document.getElementById('modalPDF').style.display = 'none';
-    const loc = document.getElementById('lokasi').value;
-    const tgl = document.getElementById('tanggal').value;
-    const jab = document.getElementById('jabatan').value;
-    const peja = document.getElementById('pejabat').value;
-    const nip = document.getElementById('nip').value;
     
-    const tabelClone = document.getElementById('tabel').cloneNode(true);
-    tabelClone.querySelectorAll('input').forEach(el => el.parentElement.innerText = el.value.toUpperCase());
+    // 2. Isi data Kop Surat sesuai bulan yang dipilih
+    const dropdownBulan = document.getElementById('bulan');
+    const namaBulan = dropdownBulan.options[dropdownBulan.selectedIndex].text.toUpperCase();
+    const tahun = document.getElementById('tahun').value;
+    document.getElementById('cetakPeriode').innerText = `PERIODE BULAN ${namaBulan} ${tahun}`;
     
-    const div = document.createElement('div');
-    div.innerHTML = `<h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>` + tabelClone.outerHTML + 
-    `<br><div style="text-align:right; font-size:12px;">${loc}, ${tgl}<br>Mengetahui,<br>${jab}<br><br><br><br><u>${peja}</u><br>NIP. ${nip}</div>`;
+    // 3. Isi data Tanda Tangan
+    document.getElementById('cetakLokasiTgl').innerText = `${document.getElementById('lokasi').value}, ${document.getElementById('tanggal').value}`;
+    document.getElementById('cetakJabatan').innerText = document.getElementById('jabatan').value;
+    document.getElementById('cetakPejabat').innerText = document.getElementById('pejabat').value;
+    document.getElementById('cetakNip').innerText = `NIP. ${document.getElementById('nip').value}`;
     
-    // Konfigurasi F4 Landscape (330mm x 210mm)
-    html2pdf().from(div).set({
-        margin: 5,
-        filename: 'Rekap_Absensi_F4.pdf',
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: [330, 210], orientation: 'landscape' }
-    }).save();
+    // 4. Perintah cetak menggunakan fungsi bawaan (Native Print Browser)
+    // Fungsi ini 100% menjamin 'Repeat Header' tabel pada kertas PDF berfungsi dengan sempurna
+    window.print();
 }
 
+// Fitur Export ke ADK (Format .txt)
 function eksporTXT() {
-    let teks = "", jml = new Date(document.getElementById('tahun').value, parseInt(document.getElementById('bulan').value)+1, 0).getDate();
+    let teks = "";
+    const b = parseInt(document.getElementById('bulan').value);
+    const t = parseInt(document.getElementById('tahun').value);
+    const jml = new Date(t, b+1, 0).getDate();
+    
     pegawai.forEach((p, i) => {
         for(let d=1; d<=jml; d++) {
             let el = document.getElementById(`i-${i}-${d}`);
             if(el && el.value.toUpperCase() === 'H')
-                teks += `${p.nip}\t${document.getElementById('tahun').value}-${parseInt(document.getElementById('bulan').value)+1}-${d}\n`;
+                teks += `${p.nip}\t${t}-${String(b+1).padStart(2, '0')}-${String(d).padStart(2, '0')}\n`;
         }
     });
+    
+    if (teks === "") {
+        alert("Tidak ada data kehadiran (H) yang ditemukan.");
+        return;
+    }
+    
     const blob = new Blob([teks], {type: "text/plain"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ADK_Uang_Makan.txt"; a.click();
 }
+
+// Render kalender saat website pertama kali dibuka
 render();
 </script>
 </body>
-</html>
+                       </html>
+                                   
