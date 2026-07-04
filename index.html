@@ -5,17 +5,25 @@
     <title>Sistem Absensi Kejaksaan Negeri Maluku Tenggara</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; color: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
+        
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        th, td { border: 1px solid #b2bec3; padding: 6px; text-align: center; }
+        th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
+        
+        /* Agar Judul Tabel muncul di setiap halaman PDF */
         thead { display: table-header-group; }
-        .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; }
+        
+        .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; }
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
+        
+        /* Hari Libur = Merah Muda */
+        .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
+        
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
@@ -73,10 +81,14 @@ const pegawai = [
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
 
+// Daftar Hari Libur Nasional 2026 (Opsional: bisa ditambah sendiri)
+const liburNasional = ["2026-01-01", "2026-02-17", "2026-05-01"]; 
+
 function render() {
     const b = document.getElementById('bulan').value;
     const t = document.getElementById('tahun').value;
     const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
@@ -85,7 +97,16 @@ function render() {
     let body = "";
     pegawai.forEach((p, i) => {
         body += `<tr><td>${i+1}</td><td style="text-align:left">${p.n}<br><small>${p.nip}</small></td>`;
-        for(let d=1; d<=jmlHari; d++) body += `<td><input class="input-absen" id="i-${i}-${d}" maxlength="1" onkeyup="hitung(${i}, ${jmlHari})"></td>`;
+        for(let d=1; d<=jmlHari; d++) {
+            let tglObj = new Date(t, b, d);
+            let tglStr = tglObj.toISOString().split('T')[0];
+            let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStr));
+            
+            body += `<td class="${isLibur ? 'libur' : ''}">
+                <input class="input-absen" id="i-${i}-${d}" maxlength="1" 
+                ${isLibur ? 'disabled' : 'onkeyup="hitung('+i+', '+jmlHari+')"'} >
+            </td>`;
+        }
         body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
     });
     document.querySelector('tbody').innerHTML = body;
@@ -94,8 +115,11 @@ function render() {
 function hitung(i, jml) {
     let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
     for(let d=1; d<=jml; d++) {
-        let v = document.getElementById(`i-${i}-${d}`).value.toUpperCase();
-        if(r.hasOwnProperty(v)) r[v]++;
+        let el = document.getElementById(`i-${i}-${d}`);
+        if(el && !el.disabled) {
+            let v = el.value.toUpperCase();
+            if(r.hasOwnProperty(v)) r[v]++;
+        }
     }
     for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
 }
@@ -127,7 +151,8 @@ function eksporTXT() {
     let teks = "", jml = new Date(document.getElementById('tahun').value, parseInt(document.getElementById('bulan').value)+1, 0).getDate();
     pegawai.forEach((p, i) => {
         for(let d=1; d<=jml; d++) {
-            if(document.getElementById(`i-${i}-${d}`).value.toUpperCase() === 'H')
+            let el = document.getElementById(`i-${i}-${d}`);
+            if(el && el.value.toUpperCase() === 'H')
                 teks += `${p.nip}\t${document.getElementById('tahun').value}-${parseInt(document.getElementById('bulan').value)+1}-${d}\n`;
         }
     });
