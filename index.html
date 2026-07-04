@@ -1,9 +1,12 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Rekap Absensi & Uang Makan</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -30,8 +33,12 @@
             padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
         }
         button { cursor: pointer; font-weight: bold; color: white; border: none; }
-        .btn-export { background-color: #27ae60; }
-        .btn-export:hover { background-color: #219653; }
+        
+        .btn-txt { background-color: #27ae60; }
+        .btn-txt:hover { background-color: #219653; }
+        
+        .btn-pdf { background-color: #c0392b; }
+        .btn-pdf:hover { background-color: #a93226; }
         
         /* Tampilan Tabel */
         .table-responsive { overflow-x: auto; }
@@ -69,14 +76,13 @@
 
 <div id="modalInstruksi">
     <div class="modal-content">
-        <h3 style="color: #2980b9;">Informasi File Kerja</h3>
+        <h3 style="color: #2980b9;">Informasi Sistem Absensi</h3>
         <p>Aplikasi ini dikembangkan berdasarkan sistem asli buatan: <strong>Jalo Tuharea</strong>.</p>
-        <p><strong>Tata cara penggunaan:</strong></p>
+        <p><strong>Pembaruan Baru:</strong> Kini Anda dapat mengunduh hasil absensi langsung menjadi Dokumen PDF yang rapi untuk dicetak.</p>
         <ol>
-            <li>Pilih Bulan dan Tahun pada panel kontrol di atas.</li>
-            <li>Kalender (jumlah hari & akhir pekan) akan disesuaikan otomatis.</li>
-            <li>Masukkan data absensi (H, I, S, DL, CT, A) di kolom yang tersedia.</li>
-            <li>Tekan tombol "Buat ADK Uang Makan" untuk menghasilkan file TXT otomatis.</li>
+            <li>Pilih Bulan dan Tahun untuk menyesuaikan kalender.</li>
+            <li>Isi status (H, I, S, DL, CT, A). Kolom rekap akan menghitung otomatis.</li>
+            <li>Klik tombol merah untuk Export PDF, atau tombol hijau untuk ADK.</li>
         </ol>
         <button class="btn-mulai" onclick="tutupModal()">Saya Mengerti, Lanjutkan</button>
     </div>
@@ -99,7 +105,8 @@
         <label><strong>Tahun:</strong></label>
         <input type="number" id="pilihTahun" value="2024" style="width: 80px;" onchange="renderKalender()">
         
-        <button class="btn-export" onclick="buatADK()">📥 Buat ADK Uang Makan (.txt)</button>
+        <button class="btn-pdf" onclick="unduhPDF()">📄 Unduh Rekap (.pdf)</button>
+        <button class="btn-txt" onclick="buatADK()">📥 Buat ADK Uang Makan (.txt)</button>
     </div>
 
     <div class="table-responsive">
@@ -113,7 +120,7 @@
 </div>
 
 <script>
-    // Data Master Pegawai & NIP (Telah diperbarui dengan data asli)
+    // Data Master Pegawai
     const dataPegawai = [
         { nama: "LUSIA MARIA RENJAAN, S.H.", nip: "196911021991032003" },
         { nama: "ANDI SAIFULLAH SAKTI, SH.", nip: "199305292019021008" },
@@ -138,47 +145,38 @@
         { nama: "JOSEPH A. HEATUBUN", nip: "196807111989031002" }
     ];
 
-    // Fungsi menutup pop-up awal
     function tutupModal() {
         document.getElementById('modalInstruksi').style.display = 'none';
     }
 
-    // Fungsi Utama: Membuat Kalender Dinamis
     function renderKalender() {
         const bulan = parseInt(document.getElementById("pilihBulan").value);
         const tahun = parseInt(document.getElementById("pilihTahun").value);
-        
-        // Mendapatkan jumlah hari dalam bulan tersebut
         const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
         
         const thead = document.querySelector("#tabelUtama thead");
         const tbody = document.querySelector("#tabelUtama tbody");
         
-        // 1. Render Header (Baris Tanggal)
         let htmlHeader1 = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA PEGAWAI / NIP</th><th colspan="${jumlahHari}">TANGGAL</th><th colspan="6">REKAPITULASI</th></tr><tr>`;
         
         for (let hari = 1; hari <= jumlahHari; hari++) {
             let tglCek = new Date(tahun, bulan, hari);
-            let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6); // 0=Minggu, 6=Sabtu
-            
+            let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6);
             let kelasLibur = isWeekend ? "hari-libur" : "";
             htmlHeader1 += `<th class="${kelasLibur}">${hari}</th>`;
         }
         htmlHeader1 += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
         thead.innerHTML = htmlHeader1;
 
-        // 2. Render Baris Pegawai
         tbody.innerHTML = "";
         dataPegawai.forEach((pegawai, index) => {
             let row = `<tr>`;
             row += `<td>${index + 1}</td>`;
             row += `<td class="nama-kolom">${pegawai.nama}<span class="nip-teks">NIP: ${pegawai.nip}</span></td>`;
             
-            // Render Kotak Input Absen
             for (let hari = 1; hari <= jumlahHari; hari++) {
                 let tglCek = new Date(tahun, bulan, hari);
                 let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6);
-                
                 let kelasLibur = isWeekend ? "hari-libur input-libur" : "";
                 let readonly = isWeekend ? "readonly placeholder='-'" : "";
                 
@@ -188,30 +186,23 @@
                 </td>`;
             }
             
-            // Kolom Hasil Rekap
             row += `<td id="rekap-H-${index}" class="rekap-cell">0</td>`;
             row += `<td id="rekap-I-${index}" class="rekap-cell">0</td>`;
             row += `<td id="rekap-S-${index}" class="rekap-cell">0</td>`;
             row += `<td id="rekap-DL-${index}" class="rekap-cell">0</td>`;
             row += `<td id="rekap-CT-${index}" class="rekap-cell">0</td>`;
             row += `<td id="rekap-A-${index}" class="rekap-cell">0</td>`;
-            
             row += `</tr>`;
             tbody.innerHTML += row;
         });
     }
 
-    // Fungsi Menghitung Rekap Real-time
     function hitungRekap(indexPegawai, totalHari) {
         let count = { H: 0, I: 0, S: 0, DL: 0, CT: 0, A: 0 };
-        
         for (let hari = 1; hari <= totalHari; hari++) {
             let nilaiInput = document.getElementById(`input-${indexPegawai}-${hari}`).value.toUpperCase().trim();
-            if (count[nilaiInput] !== undefined) {
-                count[nilaiInput]++;
-            }
+            if (count[nilaiInput] !== undefined) { count[nilaiInput]++; }
         }
-        
         document.getElementById(`rekap-H-${indexPegawai}`).innerText = count.H;
         document.getElementById(`rekap-I-${indexPegawai}`).innerText = count.I;
         document.getElementById(`rekap-S-${indexPegawai}`).innerText = count.S;
@@ -220,7 +211,57 @@
         document.getElementById(`rekap-A-${indexPegawai}`).innerText = count.A;
     }
 
-    // Fungsi Ekspor ADK TXT
+    // Ekspor langsung ke PDF dengan Kop Surat Institusi yang baru
+    function unduhPDF() {
+        const pilihBulan = document.getElementById("pilihBulan");
+        const namaBulan = pilihBulan.options[pilihBulan.selectedIndex].text.toUpperCase();
+        const tahun = document.getElementById("pilihTahun").value;
+        
+        // Membuat wadah khusus untuk dicetak agar kop surat bisa ditambahkan
+        const wadahCetak = document.createElement('div');
+        wadahCetak.style.padding = '15px';
+        wadahCetak.style.backgroundColor = '#ffffff';
+        wadahCetak.style.color = '#000000';
+        
+        // Menambahkan Kop Laporan Resmi Kejaksaan Negeri Maluku Tenggara
+        wadahCetak.innerHTML = `
+            <h2 style="text-align: center; margin-bottom: 5px; font-size: 18px;">REKAPITULASI ABSENSI PEGAWAI</h2>
+            <h3 style="text-align: center; margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #333;">
+                KEJAKSAAN NEGERI MALUKU TENGGARA<br>
+                PERIODE BULAN ${namaBulan} ${tahun}
+            </h3>
+        `;
+        
+        // Menyalin tabel utama yang sudah diisi
+        const tabelAsli = document.getElementById("tabelUtama");
+        const tabelClone = tabelAsli.cloneNode(true);
+        tabelClone.style.fontSize = "11px"; // Mengecilkan font sedikit agar muat di kertas
+        
+        // Mengubah kotak input menjadi teks biasa
+        const inputAsli = tabelAsli.querySelectorAll('input');
+        const inputClone = tabelClone.querySelectorAll('input');
+        
+        for (let i = 0; i < inputAsli.length; i++) {
+            let nilai = inputAsli[i].value;
+            let selParent = inputClone[i].parentNode;
+            selParent.innerHTML = `<span style="font-weight:bold; font-size:12px;">${nilai}</span>`;
+        }
+        
+        wadahCetak.appendChild(tabelClone);
+        
+        // Konfigurasi kertas PDF (Legal/F4 agar kolom muat)
+        const opsi = {
+            margin:       0.2,
+            filename:     `Rekap_Absensi_${namaBulan}_${tahun}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, backgroundColor: '#ffffff' },
+            jsPDF:        { unit: 'in', format: 'legal', orientation: 'landscape' }
+        };
+        
+        // Memulai proses potret dan unduh PDF
+        html2pdf().set(opsi).from(wadahCetak).save();
+    }
+
     function buatADK() {
         const bulan = parseInt(document.getElementById("pilihBulan").value);
         const tahun = parseInt(document.getElementById("pilihTahun").value);
@@ -228,21 +269,13 @@
         const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
         
         let teksADK = "";
-        
-        // Looping setiap pegawai
         dataPegawai.forEach((pegawai, index) => {
-            // Looping setiap hari dalam bulan tersebut
             for (let hari = 1; hari <= jumlahHari; hari++) {
                 let inputElement = document.getElementById(`input-${index}-${hari}`);
-                // Pastikan bukan elemen yang disabled/readonly
                 if (inputElement && inputElement.value.toUpperCase().trim() === "H") {
-                    
-                    // Format Tanggal YYYY-MM-DD
                     let strBulan = String(bulan + 1).padStart(2, '0');
                     let strHari = String(hari).padStart(2, '0');
                     let tanggalFormat = `${tahun}-${strBulan}-${strHari}`;
-                    
-                    // Format output: NIP [TAB] TANGGAL
                     teksADK += `${pegawai.nip}\t${tanggalFormat}\r\n`;
                 }
             }
@@ -253,7 +286,6 @@
             return;
         }
 
-        // Proses Unduh File Otomatis
         const namaFile = `Uang_Makan_${namaBulan}_${tahun}.txt`;
         const blob = new Blob([teksADK], { type: "text/plain" });
         const link = document.createElement("a");
@@ -263,7 +295,6 @@
         URL.revokeObjectURL(link.href);
     }
 
-    // Jalankan kalender pertama kali saat halaman dimuat
     window.onload = renderKalender;
 </script>
 
