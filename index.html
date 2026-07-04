@@ -2,41 +2,56 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Sistem Rekapitulasi Absensi Pegawai</title>
+    <title>Sistem Absensi Kejaksaan</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; }
-        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; margin: 5px 0; }
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; background: #eef2f7; padding: 15px; border-radius: 6px; }
+        
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { border: 1px solid #7f8c8d; padding: 4px; text-align: center; }
         th { background: #34495e; color: white; }
-        input { width: 25px; text-align: center; border: none; }
-        .libur { background: #e0e0e0; }
-        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 5px; width: 400px; }
+        
+        /* Fitur Repeat Header */
+        thead { display: table-header-group; }
+        
+        .input-absen { width: 25px; text-align: center; border: none; font-weight: bold; text-transform: uppercase; }
+        .rekap-cell { font-weight: bold; background: #f1f2f6; }
+        
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 400px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
+    <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
     <div class="controls">
         <select id="bulan" onchange="render()"><option value="0">Januari</option><option value="5" selected>Juni</option><option value="9">Oktober</option></select>
         <input type="number" id="tahun" value="2026" onchange="render()">
-        <button onclick="bukaModalPDF()" style="background:red; color:white;">Cetak PDF</button>
-        <button onclick="eksporTXT()" style="background:green; color:white;">Ekspor ADK TXT</button>
+        <button onclick="bukaModalPDF()" style="background:#c0392b; color:white;">Cetak PDF</button>
+        <button onclick="eksporTXT()" style="background:#27ae60; color:white;">Ekspor ADK TXT</button>
     </div>
-    <div id="tabelWrapper"><table id="tabel"><thead></thead><tbody></tbody></table></div>
+    <div class="table-wrapper" id="tabelWrapper">
+        <table id="tabel">
+            <thead></thead>
+            <tbody></tbody>
+        </table>
+    </div>
 </div>
 
 <div id="modal" class="modal" style="display:none;">
     <div class="modal-content">
-        <h3>Pengaturan Tanda Tangan</h3>
-        Lokasi: <input type="text" id="lokasi" value="Langgur"><br>
-        Tanggal: <input type="text" id="tanggal" value="07 Mei 2026"><br>
-        <hr>
+        <h3>Pengaturan Cetak PDF</h3>
+        Lokasi: <input type="text" id="lokasi" value="Langgur" style="width:90%"><br><br>
+        Tanggal: <input type="text" id="tanggal" value="07 Mei 2026" style="width:90%"><br><br>
+        Jabatan: <input type="text" id="jabatan" value="Kepala Kejaksaan Negeri Maluku Tenggara" style="width:90%"><br><br>
+        Pejabat: <input type="text" id="pejabat" value="Dr. Fadjar, S.H., M.H." style="width:90%"><br><br>
+        NIP: <input type="text" id="nip" value="197411112002121003" style="width:90%"><br><br>
         <button onclick="cetakPDF()">Konfirmasi & Cetak</button>
         <button onclick="document.getElementById('modal').style.display='none'">Batal</button>
     </div>
@@ -61,55 +76,59 @@ function render() {
     const b = document.getElementById('bulan').value;
     const t = document.getElementById('tahun').value;
     const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
-    let head = `<tr><th>NO</th><th>NAMA/NIP</th>`;
+    let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
-    head += `</tr>`;
+    head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
     let body = "";
     pegawai.forEach((p, i) => {
         body += `<tr><td>${i+1}</td><td style="text-align:left">${p.n}<br><small>${p.nip}</small></td>`;
-        for(let d=1; d<=jmlHari; d++) body += `<td><input class="input" id="i-${i}-${d}" maxlength="1"></td>`;
-        body += `</tr>`;
+        for(let d=1; d<=jmlHari; d++) body += `<td><input class="input-absen" id="i-${i}-${d}" maxlength="1" onkeyup="hitung(${i}, ${jmlHari})"></td>`;
+        body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
     });
     document.querySelector('tbody').innerHTML = body;
+}
+
+function hitung(i, jml) {
+    let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
+    for(let d=1; d<=jml; d++) {
+        let v = document.getElementById(`i-${i}-${d}`).value.toUpperCase();
+        if(r.hasOwnProperty(v)) r[v]++;
+    }
+    for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
 }
 
 function bukaModalPDF() { document.getElementById('modal').style.display = 'flex'; }
 
 function cetakPDF() {
+    document.getElementById('modal').style.display = 'none';
     const loc = document.getElementById('lokasi').value;
     const tgl = document.getElementById('tanggal').value;
-    document.getElementById('modal').style.display = 'none';
+    const jab = document.getElementById('jabatan').value;
+    const peja = document.getElementById('pejabat').value;
+    const nip = document.getElementById('nip').value;
     
-    const konten = document.getElementById('tabelWrapper').cloneNode(true);
-    // Hapus input box agar saat print terlihat rapi
-    konten.querySelectorAll('input').forEach(el => el.parentElement.innerText = el.value);
+    const tabelClone = document.getElementById('tabel').cloneNode(true);
+    tabelClone.querySelectorAll('input').forEach(el => el.parentElement.innerText = el.value.toUpperCase());
     
     const div = document.createElement('div');
-    div.innerHTML = `<h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>` + konten.innerHTML + 
-    `<br><div style="text-align:right">
-        ${loc}, ${tgl}<br>Mengetahui,<br>Kepala Kejaksaan Negeri Maluku Tenggara<br><br><br><br>
-        <u>Dr. Fadjar, S.H., M.H.</u><br>NIP. 197411112002121003
-    </div>`;
+    div.innerHTML = `<h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>` + tabelClone.outerHTML + 
+    `<br><div style="text-align:right; font-size:12px;">${loc}, ${tgl}<br>Mengetahui,<br>${jab}<br><br><br><br><u>${peja}</u><br>NIP. ${nip}</div>`;
     
     html2pdf().from(div).set({jsPDF: {orientation: 'landscape', format: 'legal'}}).save();
 }
 
 function eksporTXT() {
-    let teks = "";
-    const jmlHari = new Date(document.getElementById('tahun').value, parseInt(document.getElementById('bulan').value)+1, 0).getDate();
+    let teks = "", jml = new Date(document.getElementById('tahun').value, parseInt(document.getElementById('bulan').value)+1, 0).getDate();
     pegawai.forEach((p, i) => {
-        for(let d=1; d<=jmlHari; d++) {
+        for(let d=1; d<=jml; d++) {
             if(document.getElementById(`i-${i}-${d}`).value.toUpperCase() === 'H')
                 teks += `${p.nip}\t${document.getElementById('tahun').value}-${parseInt(document.getElementById('bulan').value)+1}-${d}\n`;
         }
     });
     const blob = new Blob([teks], {type: "text/plain"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "ADK_Uang_Makan.txt";
-    a.click();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ADK_Uang_Makan.txt"; a.click();
 }
 
 render();
