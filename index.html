@@ -8,27 +8,20 @@
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
-        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         
-        /* Tabel & Tampilan Kolom */
-        .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
         
         .nama-kolom { text-align: left; min-width: 200px; font-weight: bold; background-color: #f9f9f9; }
         .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
-        
-        /* PERBAIKAN: Lebar dan panjang input diubah untuk memuat 2 huruf */
         .input-absen { width: 35px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; outline: none; }
-        .input-absen:focus { background-color: #e1f5fe; }
-        
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
         
         @media print {
@@ -50,60 +43,46 @@
     </div>
 
     <div class="controls no-print">
-        <select id="bulan" onchange="render()">
-            <option value="0">Januari</option><option value="1">Februari</option><option value="2">Maret</option>
-            <option value="3">April</option><option value="4">Mei</option><option value="5" selected>Juni</option>
-            <option value="6">Juli</option><option value="7">Agustus</option><option value="8">September</option>
-            <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
-        </select>
+        <select id="bulan" onchange="render()"></select>
         <input type="number" id="tahun" value="2026" onchange="gantiTahun()" style="width: 80px;">
         <button onclick="window.print()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
-        <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Ekspor Excel</button>
+        <button onclick="bukaAdmin()" style="background:#8e44ad;">⚙️ Panel Admin</button>
+        <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Excel</button>
     </div>
 
     <div class="table-wrapper">
-        <table id="tabelUtama">
-            <thead></thead>
-            <tbody></tbody>
-        </table>
+        <table id="tabelUtama"><thead></thead><tbody></tbody></table>
+    </div>
+</div>
+
+<div id="modalAdmin" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Kelola Pegawai</h3>
+        <div id="listAdmin" style="margin: 15px 0;"></div>
+        <hr>
+        <input type="text" id="nBaru" placeholder="Nama Pegawai" style="width:90%; margin-bottom:5px;">
+        <input type="text" id="nipBaru" placeholder="NIP" style="width:90%; margin-bottom:5px;">
+        <button onclick="tambah()" style="background:#27ae60; width:100%;">Tambah Pegawai</button>
+        <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%;">Tutup</button>
     </div>
 </div>
 
 <script>
-const pegawai = [
-    {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"},
-    {n:"JHON THIMOTIUS PADALANI, SH", nip:"199309012019021010"}, {n:"RAMDHANI", nip:"198306222002121005"},
-    {n:"RIGO ROLYS ATARWAMAN, A.Md", nip:"198502192009121003"}, {n:"MAHESA ARYO BIMO, S.H.", nip:"199905112022031002"},
-    {n:"RAMLI BUGIS, SH", nip:"197606121998031005"}, {n:"VINDRIANITA, A.Md.KOM", nip:"199804132022032005"},
-    {n:"KETUT IRWAN RISWANDI", nip:"199806172022031003"}, {n:"HENDRY JODIE PAIMIN, A.Md", nip:"199407252022031002"},
-    {n:"BUDIWAN ALI", nip:"198802192020121007"}, {n:"AVEL HAEZER MATANDE, SH", nip:"199407052019021007"},
-    {n:"FADJAR, SH.", nip:"197411112002121002"}, {n:"SAIFUL ANWAR", nip:"198203102002121003"},
-    {n:"RAIHAN THAHIR, SH", nip:"199706032024041002"}, {n:"MHD. WALID R. NASUTION, S.H.", nip:"199712302024041001"},
-    {n:"JARU YEHEZKIEL, S.H.", nip:"199901142024041003"}, {n:"TARUNA ADI PERKASA", nip:"199704182024041003"},
-    {n:"DWI SETIYAWAN NUGROHO, SH", nip:"199405122018011005"}, {n:"DAIKAN AOLIA ARFAN, SH.", nip:"199007012015011001"},
-    {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
+let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [
+    {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"}
 ];
+let liburNasional = [];
 
-let liburNasional = []; 
-
-async function gantiTahun() {
-    const t = document.getElementById('tahun').value;
-    try {
-        let response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${t}/ID`);
-        if (response.ok) {
-            let data = await response.json();
-            liburNasional = data.map(item => item.date);
-        }
-    } catch (e) { console.log("API Libur Gagal"); }
-    render();
+function gantiTahun() {
+    fetch(`https://date.nager.at/api/v3/PublicHolidays/${document.getElementById('tahun').value}/ID`)
+    .then(r => r.json()).then(d => { liburNasional = d.map(i => i.date); render(); }).catch(render);
 }
 
 function render() {
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jmlHari = new Date(t, b+1, 0).getDate();
-    const kunci = `absensi_${t}_${b}`;
-    const dataTersimpan = JSON.parse(localStorage.getItem(kunci)) || {};
+    const dataTersimpan = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
     
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
@@ -117,13 +96,10 @@ function render() {
             let tglObj = new Date(t, b, d);
             let tglStr = `${t}-${String(b+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStr));
-            let nilai = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : "";
-            
-            // PERBAIKAN: maxlength="2" agar bisa mengetik DL atau CT
+            let val = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : "";
             body += `<td class="${isLibur ? 'libur' : ''}">
-                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${nilai}"
-                ${isLibur ? 'disabled' : `onkeyup="hitung(${i}, ${jmlHari}); simpanData()"`} >
-                <span class="print-val" id="val-${i}-${d}">${nilai}</span>
+                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" ${isLibur?'disabled':`onkeyup="hitung(${i}, ${jmlHari}); simpan()"`}>
+                <span class="print-val">${val}</span>
             </td>`;
         }
         body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
@@ -136,38 +112,46 @@ function hitung(i, jml) {
     let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
     for(let d=1; d<=jml; d++) {
         let el = document.getElementById(`i-${i}-${d}`);
-        let span = document.getElementById(`val-${i}-${d}`);
         if(el && !el.disabled) {
             let v = el.value.toUpperCase();
             if(r.hasOwnProperty(v)) r[v]++;
-            span.innerText = v;
         }
     }
     for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
 }
 
-function simpanData() {
+function simpan() {
     const b = document.getElementById('bulan').value;
     const t = document.getElementById('tahun').value;
-    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
     let data = {};
     pegawai.forEach((p, i) => {
-        let baris = {};
-        for(let d=1; d<=jmlHari; d++) {
+        data[i] = {};
+        for(let d=1; d<=31; d++) {
             let el = document.getElementById(`i-${i}-${d}`);
-            if(el && el.value) baris[d] = el.value.toUpperCase();
+            if(el && el.value) data[i][d] = el.value.toUpperCase();
         }
-        data[i] = baris;
     });
     localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
 }
 
-function eksporExcel() {
-    // Fungsi Excel sudah ada di kode sebelumnya
-    alert("Data berhasil diekspor ke Excel!");
+function tambah() {
+    let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value;
+    if(n && nip) { pegawai.push({n, nip}); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); }
 }
 
-window.onload = gantiTahun;
+function bukaAdmin() {
+    document.getElementById('modalAdmin').style.display='flex';
+    let l = document.getElementById('listAdmin'); l.innerHTML = "";
+    pegawai.forEach((p,i) => l.innerHTML += `<div>${p.n} <button onclick="hapus(${i})" style="background:#c0392b; padding:2px 5px;">X</button></div>`);
+}
+
+function hapus(i) { pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
+
+// Init
+const b = document.getElementById('bulan');
+["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> b.innerHTML += `<option value="${i}">${m}</option>`);
+b.value = new Date().getMonth();
+gantiTahun();
 </script>
 </body>
 </html>
