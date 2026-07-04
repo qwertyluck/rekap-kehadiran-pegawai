@@ -8,13 +8,16 @@
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
+        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         
-        /* Tabel */
+        /* Tabel & Header */
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
+        
+        /* Repeat Header di setiap halaman PDF */
         thead { display: table-header-group; }
         
         .nama-kolom { text-align: left; min-width: 220px; font-weight: bold; background-color: #f9f9f9; }
@@ -25,7 +28,7 @@
         /* Hari Libur Merah */
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         
-        /* Modal */
+        /* Modal & Dialog */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
@@ -37,13 +40,14 @@
 
 <div id="modalInstruksi" class="modal">
     <div class="modal-content">
-        <h3>Informasi File Kerja</h3>
+        <h3>Informasi Sistem Absensi</h3>
         <p>File ini dibuat oleh: <strong>Jalo Tuharea</strong></p>
         <p><strong>Tata cara penggunaan:</strong></p>
         <ol>
             <li>Pilih Bulan dan Tahun yang sesuai.</li>
             <li>Input data absensi (H, I, S, DL, CT, A).</li>
-            <li>Klik tombol cetak PDF atau Ekspor ADK.</li>
+            <li>Hari Sabtu & Minggu otomatis terkunci (Libur).</li>
+            <li>Klik tombol Cetak PDF atau Ekspor ADK.</li>
         </ol>
         <button onclick="document.getElementById('modalInstruksi').style.display='none'" style="background:#2980b9; width:100%;">Lanjutkan</button>
     </div>
@@ -73,8 +77,8 @@
             <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
         </select>
         <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px;">
-        <button onclick="bukaModalPDF()" style="background:#c0392b;">Cetak PDF</button>
-        <button onclick="eksporTXT()" style="background:#27ae60;">Ekspor ADK TXT</button>
+        <button onclick="bukaModalPDF()" style="background:#c0392b;">📄 Cetak PDF</button>
+        <button onclick="eksporTXT()" style="background:#27ae60;">📥 Ekspor ADK TXT</button>
     </div>
     <div class="table-wrapper" id="tabelWrapper">
         <table id="tabel">
@@ -99,6 +103,7 @@ const pegawai = [
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
 
+// Anda bisa menambahkan tanggal libur spesifik di sini
 const liburNasional = ["2026-01-01", "2026-02-17", "2026-05-01"]; 
 
 function render() {
