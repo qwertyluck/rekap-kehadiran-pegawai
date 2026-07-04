@@ -8,16 +8,13 @@
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
-        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         
-        /* Tabel & Header */
+        /* Tabel */
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
-        
-        /* Repeat Header di setiap halaman PDF */
         thead { display: table-header-group; }
         
         .nama-kolom { text-align: left; min-width: 220px; font-weight: bold; background-color: #f9f9f9; }
@@ -28,7 +25,7 @@
         /* Hari Libur Merah */
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         
-        /* Modal & Dialog */
+        /* Modal */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
@@ -77,7 +74,7 @@
             <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
         </select>
         <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px;">
-        <button onclick="bukaModalPDF()" style="background:#c0392b;">📄 Cetak PDF</button>
+        <button onclick="bukaModalPDF()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
         <button onclick="eksporTXT()" style="background:#27ae60;">📥 Ekspor ADK TXT</button>
     </div>
     <div class="table-wrapper" id="tabelWrapper">
@@ -103,7 +100,6 @@ const pegawai = [
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
 
-// Anda bisa menambahkan tanggal libur spesifik di sini
 const liburNasional = ["2026-01-01", "2026-02-17", "2026-05-01"]; 
 
 function render() {
@@ -117,7 +113,7 @@ function render() {
 
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td style="text-align:left">${p.n}<br><small class="nip-teks">${p.nip}</small></td>`;
+        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><small class="nip-teks">${p.nip}</small></td>`;
         for(let d=1; d<=jmlHari; d++) {
             let tglObj = new Date(t, b, d);
             let tglStr = tglObj.toISOString().split('T')[0];
@@ -164,7 +160,14 @@ function cetakPDF() {
     div.innerHTML = `<h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>` + tabelClone.outerHTML + 
     `<br><div style="text-align:right; font-size:12px;">${loc}, ${tgl}<br>Mengetahui,<br>${jab}<br><br><br><br><u>${peja}</u><br>NIP. ${nip}</div>`;
     
-    html2pdf().from(div).set({jsPDF: {orientation: 'landscape', format: 'legal'}}).save();
+    // Konfigurasi F4 Landscape (330mm x 210mm)
+    html2pdf().from(div).set({
+        margin: 5,
+        filename: 'Rekap_Absensi_F4.pdf',
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: [330, 210], orientation: 'landscape' }
+    }).save();
 }
 
 function eksporTXT() {
