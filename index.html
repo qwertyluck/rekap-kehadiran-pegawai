@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Rekap Absensi & Uang Makan</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        .container {
+            max-width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h2, h3 { text-align: center; margin-top: 0; color: #2c3e50; }
+        
+        .control-panel {
+            background: #eef2f7; padding: 15px; border-radius: 6px; 
+            margin-bottom: 20px; display: flex; gap: 15px; 
+            align-items: center; justify-content: center; flex-wrap: wrap;
+        }
+        select, input[type="number"], button {
+            padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
+        }
+        button { cursor: pointer; font-weight: bold; color: white; border: none; }
+        .btn-export { background-color: #27ae60; }
+        .btn-export:hover { background-color: #219653; }
+        
+        /* Tampilan Tabel */
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid #bdc3c7; padding: 5px; text-align: center; }
+        th { background-color: #34495e; color: white; }
+        .nama-kolom { text-align: left; min-width: 220px; font-weight: bold; background-color: #f9f9f9;}
+        .nip-teks { font-size: 11px; color: #7f8c8d; font-weight: normal; display: block;}
+        
+        .input-absen {
+            width: 30px; text-align: center; font-weight: bold; text-transform: uppercase;
+            border: 1px solid #ddd; border-radius: 3px; padding: 4px;
+        }
+        .rekap-cell { background-color: #f1f2f6; font-weight: bold; }
+        
+        /* Pewarnaan Hari Libur Otomatis */
+        .hari-libur { background-color: #e0e0e0 !important; }
+        .input-libur { background-color: #e0e0e0; cursor: not-allowed; }
+
+        /* Gaya untuk Pop-up / Modal */
+        #modalInstruksi {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: flex; align-items: center; 
+            justify-content: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 8px; max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        .btn-mulai { background-color: #2980b9; padding: 10px 20px; margin-top: 15px; width: 100%; }
+        .btn-mulai:hover { background-color: #2471a3; }
+    </style>
+</head>
+<body>
+
+<div id="modalInstruksi">
+    <div class="modal-content">
+        <h3 style="color: #2980b9;">Informasi File Kerja</h3>
+        <p>Aplikasi ini dikembangkan berdasarkan sistem asli buatan: <strong>Jalo Tuharea</strong>.</p>
+        <p><strong>Tata cara penggunaan:</strong></p>
+        <ol>
+            <li>Pilih Bulan dan Tahun pada panel kontrol di atas.</li>
+            <li>Kalender (jumlah hari & akhir pekan) akan disesuaikan otomatis.</li>
+            <li>Masukkan data absensi (H, I, S, DL, CT, A) di kolom yang tersedia.</li>
+            <li>Tekan tombol "Buat ADK Uang Makan" untuk menghasilkan file TXT otomatis.</li>
+        </ol>
+        <button class="btn-mulai" onclick="tutupModal()">Saya Mengerti, Lanjutkan</button>
+    </div>
+</div>
+
+<div class="container">
+    <h2>REKAPITULASI ABSENSI & UANG MAKAN</h2>
+
+    <div class="control-panel">
+        <label><strong>Bulan:</strong></label>
+        <select id="pilihBulan" onchange="renderKalender()">
+            <option value="0">Januari</option> <option value="1">Februari</option>
+            <option value="2">Maret</option> <option value="3">April</option>
+            <option value="4">Mei</option> <option value="5" selected>Juni</option>
+            <option value="6">Juli</option> <option value="7">Agustus</option>
+            <option value="8">September</option> <option value="9">Oktober</option>
+            <option value="10">November</option> <option value="11">Desember</option>
+        </select>
+        
+        <label><strong>Tahun:</strong></label>
+        <input type="number" id="pilihTahun" value="2024" style="width: 80px;" onchange="renderKalender()">
+        
+        <button class="btn-export" onclick="buatADK()">📥 Buat ADK Uang Makan (.txt)</button>
+    </div>
+
+    <div class="table-responsive">
+        <table id="tabelUtama">
+            <thead>
+                </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Data Master Pegawai & NIP (Telah diperbarui dengan data asli)
+    const dataPegawai = [
+        { nama: "LUSIA MARIA RENJAAN, S.H.", nip: "196911021991032003" },
+        { nama: "ANDI SAIFULLAH SAKTI, SH.", nip: "199305292019021008" },
+        { nama: "JHON THIMOTIUS PADALANI, SH", nip: "199309012019021010" },
+        { nama: "RAMDHANI", nip: "198306222002121005" },
+        { nama: "RIGO ROLYS ATARWAMAN, A.Md", nip: "198502192009121003" },
+        { nama: "MAHESA ARYO BIMO, S.H.", nip: "199905112022031002" },
+        { nama: "RAMLI BUGIS, SH", nip: "197606121998031005" },
+        { nama: "VINDRIANITA, A.Md.KOM", nip: "199804132022032005" },
+        { nama: "KETUT IRWAN RISWANDI", nip: "199806172022031003" },
+        { nama: "HENDRY JODIE PAIMIN, A.Md", nip: "199407252022031002" },
+        { nama: "BUDIWAN ALI", nip: "198802192020121007" },
+        { nama: "AVEL HAEZER MATANDE, SH", nip: "199407052019021007" },
+        { nama: "FADJAR, SH.", nip: "197411112002121002" },
+        { nama: "SAIFUL ANWAR", nip: "198203102002121003" },
+        { nama: "RAIHAN THAHIR, SH", nip: "199706032024041002" },
+        { nama: "MHD. WALID R. NASUTION, S.H.", nip: "199712302024041001" },
+        { nama: "JARU YEHEZKIEL, S.H.", nip: "199901142024041003" },
+        { nama: "TARUNA ADI PERKASA", nip: "199704182024041003" },
+        { nama: "DWI SETIYAWAN NUGROHO, SH", nip: "199405122018011005" },
+        { nama: "DAIKAN AOLIA ARFAN, SH.", nip: "199007012015011001" },
+        { nama: "JOSEPH A. HEATUBUN", nip: "196807111989031002" }
+    ];
+
+    // Fungsi menutup pop-up awal
+    function tutupModal() {
+        document.getElementById('modalInstruksi').style.display = 'none';
+    }
+
+    // Fungsi Utama: Membuat Kalender Dinamis
+    function renderKalender() {
+        const bulan = parseInt(document.getElementById("pilihBulan").value);
+        const tahun = parseInt(document.getElementById("pilihTahun").value);
+        
+        // Mendapatkan jumlah hari dalam bulan tersebut
+        const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
+        
+        const thead = document.querySelector("#tabelUtama thead");
+        const tbody = document.querySelector("#tabelUtama tbody");
+        
+        // 1. Render Header (Baris Tanggal)
+        let htmlHeader1 = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA PEGAWAI / NIP</th><th colspan="${jumlahHari}">TANGGAL</th><th colspan="6">REKAPITULASI</th></tr><tr>`;
+        
+        for (let hari = 1; hari <= jumlahHari; hari++) {
+            let tglCek = new Date(tahun, bulan, hari);
+            let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6); // 0=Minggu, 6=Sabtu
+            
+            let kelasLibur = isWeekend ? "hari-libur" : "";
+            htmlHeader1 += `<th class="${kelasLibur}">${hari}</th>`;
+        }
+        htmlHeader1 += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
+        thead.innerHTML = htmlHeader1;
+
+        // 2. Render Baris Pegawai
+        tbody.innerHTML = "";
+        dataPegawai.forEach((pegawai, index) => {
+            let row = `<tr>`;
+            row += `<td>${index + 1}</td>`;
+            row += `<td class="nama-kolom">${pegawai.nama}<span class="nip-teks">NIP: ${pegawai.nip}</span></td>`;
+            
+            // Render Kotak Input Absen
+            for (let hari = 1; hari <= jumlahHari; hari++) {
+                let tglCek = new Date(tahun, bulan, hari);
+                let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6);
+                
+                let kelasLibur = isWeekend ? "hari-libur input-libur" : "";
+                let readonly = isWeekend ? "readonly placeholder='-'" : "";
+                
+                row += `<td class="${isWeekend ? 'hari-libur' : ''}">
+                    <input type="text" class="input-absen ${kelasLibur}" ${readonly} 
+                    id="input-${index}-${hari}" maxlength="2" onkeyup="hitungRekap(${index}, ${jumlahHari})">
+                </td>`;
+            }
+            
+            // Kolom Hasil Rekap
+            row += `<td id="rekap-H-${index}" class="rekap-cell">0</td>`;
+            row += `<td id="rekap-I-${index}" class="rekap-cell">0</td>`;
+            row += `<td id="rekap-S-${index}" class="rekap-cell">0</td>`;
+            row += `<td id="rekap-DL-${index}" class="rekap-cell">0</td>`;
+            row += `<td id="rekap-CT-${index}" class="rekap-cell">0</td>`;
+            row += `<td id="rekap-A-${index}" class="rekap-cell">0</td>`;
+            
+            row += `</tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    // Fungsi Menghitung Rekap Real-time
+    function hitungRekap(indexPegawai, totalHari) {
+        let count = { H: 0, I: 0, S: 0, DL: 0, CT: 0, A: 0 };
+        
+        for (let hari = 1; hari <= totalHari; hari++) {
+            let nilaiInput = document.getElementById(`input-${indexPegawai}-${hari}`).value.toUpperCase().trim();
+            if (count[nilaiInput] !== undefined) {
+                count[nilaiInput]++;
+            }
+        }
+        
+        document.getElementById(`rekap-H-${indexPegawai}`).innerText = count.H;
+        document.getElementById(`rekap-I-${indexPegawai}`).innerText = count.I;
+        document.getElementById(`rekap-S-${indexPegawai}`).innerText = count.S;
+        document.getElementById(`rekap-DL-${indexPegawai}`).innerText = count.DL;
+        document.getElementById(`rekap-CT-${indexPegawai}`).innerText = count.CT;
+        document.getElementById(`rekap-A-${indexPegawai}`).innerText = count.A;
+    }
+
+    // Fungsi Ekspor ADK TXT
+    function buatADK() {
+        const bulan = parseInt(document.getElementById("pilihBulan").value);
+        const tahun = parseInt(document.getElementById("pilihTahun").value);
+        const namaBulan = document.getElementById("pilihBulan").options[bulan].text.toUpperCase();
+        const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
+        
+        let teksADK = "";
+        
+        // Looping setiap pegawai
+        dataPegawai.forEach((pegawai, index) => {
+            // Looping setiap hari dalam bulan tersebut
+            for (let hari = 1; hari <= jumlahHari; hari++) {
+                let inputElement = document.getElementById(`input-${index}-${hari}`);
+                // Pastikan bukan elemen yang disabled/readonly
+                if (inputElement && inputElement.value.toUpperCase().trim() === "H") {
+                    
+                    // Format Tanggal YYYY-MM-DD
+                    let strBulan = String(bulan + 1).padStart(2, '0');
+                    let strHari = String(hari).padStart(2, '0');
+                    let tanggalFormat = `${tahun}-${strBulan}-${strHari}`;
+                    
+                    // Format output: NIP [TAB] TANGGAL
+                    teksADK += `${pegawai.nip}\t${tanggalFormat}\r\n`;
+                }
+            }
+        });
+        
+        if (teksADK === "") {
+            alert("Tidak ada data kehadiran (H) yang ditemukan untuk diekspor!");
+            return;
+        }
+
+        // Proses Unduh File Otomatis
+        const namaFile = `Uang_Makan_${namaBulan}_${tahun}.txt`;
+        const blob = new Blob([teksADK], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = namaFile;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    // Jalankan kalender pertama kali saat halaman dimuat
+    window.onload = renderKalender;
+</script>
+
+</body>
+</html>
