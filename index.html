@@ -2,301 +2,117 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Rekapatulasi Absensi Pegawai</title>
-    
+    <title>Sistem Absensi & Uang Makan</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f6f9;
-            color: #333;
-        }
-        .container {
-            max-width: 100%;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        h2, h3 { text-align: center; margin-top: 0; color: #2c3e50; }
-        
-        .control-panel {
-            background: #eef2f7; padding: 15px; border-radius: 6px; 
-            margin-bottom: 20px; display: flex; gap: 15px; 
-            align-items: center; justify-content: center; flex-wrap: wrap;
-        }
-        select, input[type="number"], button {
-            padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
-        }
-        button { cursor: pointer; font-weight: bold; color: white; border: none; }
-        
-        .btn-txt { background-color: #27ae60; }
-        .btn-txt:hover { background-color: #219653; }
-        
-        .btn-pdf { background-color: #c0392b; }
-        .btn-pdf:hover { background-color: #a93226; }
-        
-        /* Tampilan Tabel */
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { border: 1px solid #bdc3c7; padding: 5px; text-align: center; }
-        th { background-color: #34495e; color: white; }
-        .nama-kolom { text-align: left; min-width: 220px; font-weight: bold; background-color: #f9f9f9;}
-        .nip-teks { font-size: 11px; color: #7f8c8d; font-weight: normal; display: block;}
-        
-        .input-absen {
-            width: 30px; text-align: center; font-weight: bold; text-transform: uppercase;
-            border: 1px solid #ddd; border-radius: 3px; padding: 4px;
-        }
-        .rekap-cell { background-color: #f1f2f6; font-weight: bold; }
-        
-        /* Pewarnaan Hari Libur Otomatis */
-        .hari-libur { background-color: #e0e0e0 !important; }
-        .input-libur { background-color: #e0e0e0; cursor: not-allowed; }
-
-        /* Gaya untuk Pop-up / Modal */
-        #modalInstruksi {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); display: flex; align-items: center; 
-            justify-content: center; z-index: 1000;
-        }
-        .modal-content {
-            background: white; padding: 30px; border-radius: 8px; max-width: 500px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-        .btn-mulai { background-color: #2980b9; padding: 10px 20px; margin-top: 15px; width: 100%; }
-        .btn-mulai:hover { background-color: #2471a3; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+        th { background: #34495e; color: white; }
+        input { width: 25px; text-align: center; border: none; }
+        .libur { background: #e0e0e0; }
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 5px; width: 400px; }
     </style>
 </head>
 <body>
 
-<div id="modalInstruksi">
-    <div class="modal-content">
-        <h3 style="color: #2980b9;">Informasi Sistem Absensi</h3>
-        <p>Aplikasi ini dikembangkan berdasarkan sistem asli buatan: <strong>Jalo Tuharea</strong>.</p>
-        <p><strong>Pembaruan Baru:</strong> Kini Anda dapat mengunduh hasil absensi langsung menjadi Dokumen PDF yang rapi untuk dicetak.</p>
-        <ol>
-            <li>Pilih Bulan dan Tahun untuk menyesuaikan kalender.</li>
-            <li>Isi status (H, I, S, DL, CT, A). Kolom rekap akan menghitung otomatis.</li>
-            <li>Klik tombol merah untuk Export PDF, atau tombol hijau untuk ADK.</li>
-        </ol>
-        <button class="btn-mulai" onclick="tutupModal()">Saya Mengerti, Lanjutkan</button>
+<div class="container">
+    <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
+    <div class="controls">
+        <select id="bulan" onchange="render()"><option value="0">Januari</option><option value="5" selected>Juni</option><option value="9">Oktober</option></select>
+        <input type="number" id="tahun" value="2026" onchange="render()">
+        <button onclick="bukaModalPDF()" style="background:red; color:white;">Cetak PDF</button>
+        <button onclick="eksporTXT()" style="background:green; color:white;">Ekspor ADK TXT</button>
     </div>
+    <div id="tabelWrapper"><table id="tabel"><thead></thead><tbody></tbody></table></div>
 </div>
 
-<div class="container">
-    <h2>REKAPITULASI ABSENSI & UANG MAKAN</h2>
-
-    <div class="control-panel">
-        <label><strong>Bulan:</strong></label>
-        <select id="pilihBulan" onchange="renderKalender()">
-            <option value="0">Januari</option> <option value="1">Februari</option>
-            <option value="2">Maret</option> <option value="3">April</option>
-            <option value="4">Mei</option> <option value="5" selected>Juni</option>
-            <option value="6">Juli</option> <option value="7">Agustus</option>
-            <option value="8">September</option> <option value="9">Oktober</option>
-            <option value="10">November</option> <option value="11">Desember</option>
-        </select>
-        
-        <label><strong>Tahun:</strong></label>
-        <input type="number" id="pilihTahun" value="2024" style="width: 80px;" onchange="renderKalender()">
-        
-        <button class="btn-pdf" onclick="unduhPDF()">📄 Unduh Rekap (.pdf)</button>
-        <button class="btn-txt" onclick="buatADK()">📥 Buat ADK Uang Makan (.txt)</button>
-    </div>
-
-    <div class="table-responsive">
-        <table id="tabelUtama">
-            <thead>
-                </thead>
-            <tbody>
-                </tbody>
-        </table>
+<div id="modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Pengaturan Tanda Tangan</h3>
+        Lokasi: <input type="text" id="lokasi" value="Langgur"><br>
+        Tanggal: <input type="text" id="tanggal" value="07 Mei 2026"><br>
+        <hr>
+        <button onclick="cetakPDF()">Konfirmasi & Cetak</button>
+        <button onclick="document.getElementById('modal').style.display='none'">Batal</button>
     </div>
 </div>
 
 <script>
-    // Data Master Pegawai
-    const dataPegawai = [
-        { nama: "LUSIA MARIA RENJAAN, S.H.", nip: "196911021991032003" },
-        { nama: "ANDI SAIFULLAH SAKTI, SH.", nip: "199305292019021008" },
-        { nama: "JHON THIMOTIUS PADALANI, SH", nip: "199309012019021010" },
-        { nama: "RAMDHANI", nip: "198306222002121005" },
-        { nama: "RIGO ROLYS ATARWAMAN, A.Md", nip: "198502192009121003" },
-        { nama: "MAHESA ARYO BIMO, S.H.", nip: "199905112022031002" },
-        { nama: "RAMLI BUGIS, SH", nip: "197606121998031005" },
-        { nama: "VINDRIANITA, A.Md.KOM", nip: "199804132022032005" },
-        { nama: "KETUT IRWAN RISWANDI", nip: "199806172022031003" },
-        { nama: "HENDRY JODIE PAIMIN, A.Md", nip: "199407252022031002" },
-        { nama: "BUDIWAN ALI", nip: "198802192020121007" },
-        { nama: "AVEL HAEZER MATANDE, SH", nip: "199407052019021007" },
-        { nama: "FADJAR, SH.", nip: "197411112002121002" },
-        { nama: "SAIFUL ANWAR", nip: "198203102002121003" },
-        { nama: "RAIHAN THAHIR, SH", nip: "199706032024041002" },
-        { nama: "MHD. WALID R. NASUTION, S.H.", nip: "199712302024041001" },
-        { nama: "JARU YEHEZKIEL, S.H.", nip: "199901142024041003" },
-        { nama: "TARUNA ADI PERKASA", nip: "199704182024041003" },
-        { nama: "DWI SETIYAWAN NUGROHO, SH", nip: "199405122018011005" },
-        { nama: "DAIKAN AOLIA ARFAN, SH.", nip: "199007012015011001" },
-        { nama: "JOSEPH A. HEATUBUN", nip: "196807111989031002" }
-    ];
+const pegawai = [
+    {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"},
+    {n:"JHON THIMOTIUS PADALANI, SH", nip:"199309012019021010"}, {n:"RAMDHANI", nip:"198306222002121005"},
+    {n:"RIGO ROLYS ATARWAMAN, A.Md", nip:"198502192009121003"}, {n:"MAHESA ARYO BIMO, S.H.", nip:"199905112022031002"},
+    {n:"RAMLI BUGIS, SH", nip:"197606121998031005"}, {n:"VINDRIANITA, A.Md.KOM", nip:"199804132022032005"},
+    {n:"KETUT IRWAN RISWANDI", nip:"199806172022031003"}, {n:"HENDRY JODIE PAIMIN, A.Md", nip:"199407252022031002"},
+    {n:"BUDIWAN ALI", nip:"198802192020121007"}, {n:"AVEL HAEZER MATANDE, SH", nip:"199407052019021007"},
+    {n:"FADJAR, SH.", nip:"197411112002121002"}, {n:"SAIFUL ANWAR", nip:"198203102002121003"},
+    {n:"RAIHAN THAHIR, SH", nip:"199706032024041002"}, {n:"MHD. WALID R. NASUTION, S.H.", nip:"199712302024041001"},
+    {n:"JARU YEHEZKIEL, S.H.", nip:"199901142024041003"}, {n:"TARUNA ADI PERKASA", nip:"199704182024041003"},
+    {n:"DWI SETIYAWAN NUGROHO, SH", nip:"199405122018011005"}, {n:"DAIKAN AOLIA ARFAN, SH.", nip:"199007012015011001"},
+    {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
+];
 
-    function tutupModal() {
-        document.getElementById('modalInstruksi').style.display = 'none';
-    }
+function render() {
+    const b = document.getElementById('bulan').value;
+    const t = document.getElementById('tahun').value;
+    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    let head = `<tr><th>NO</th><th>NAMA/NIP</th>`;
+    for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
+    head += `</tr>`;
+    document.querySelector('thead').innerHTML = head;
 
-    function renderKalender() {
-        const bulan = parseInt(document.getElementById("pilihBulan").value);
-        const tahun = parseInt(document.getElementById("pilihTahun").value);
-        const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
-        
-        const thead = document.querySelector("#tabelUtama thead");
-        const tbody = document.querySelector("#tabelUtama tbody");
-        
-        let htmlHeader1 = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA PEGAWAI / NIP</th><th colspan="${jumlahHari}">TANGGAL</th><th colspan="6">REKAPITULASI</th></tr><tr>`;
-        
-        for (let hari = 1; hari <= jumlahHari; hari++) {
-            let tglCek = new Date(tahun, bulan, hari);
-            let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6);
-            let kelasLibur = isWeekend ? "hari-libur" : "";
-            htmlHeader1 += `<th class="${kelasLibur}">${hari}</th>`;
+    let body = "";
+    pegawai.forEach((p, i) => {
+        body += `<tr><td>${i+1}</td><td style="text-align:left">${p.n}<br><small>${p.nip}</small></td>`;
+        for(let d=1; d<=jmlHari; d++) body += `<td><input class="input" id="i-${i}-${d}" maxlength="1"></td>`;
+        body += `</tr>`;
+    });
+    document.querySelector('tbody').innerHTML = body;
+}
+
+function bukaModalPDF() { document.getElementById('modal').style.display = 'flex'; }
+
+function cetakPDF() {
+    const loc = document.getElementById('lokasi').value;
+    const tgl = document.getElementById('tanggal').value;
+    document.getElementById('modal').style.display = 'none';
+    
+    const konten = document.getElementById('tabelWrapper').cloneNode(true);
+    // Hapus input box agar saat print terlihat rapi
+    konten.querySelectorAll('input').forEach(el => el.parentElement.innerText = el.value);
+    
+    const div = document.createElement('div');
+    div.innerHTML = `<h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>` + konten.innerHTML + 
+    `<br><div style="text-align:right">
+        ${loc}, ${tgl}<br>Mengetahui,<br>Kepala Kejaksaan Negeri Maluku Tenggara<br><br><br><br>
+        <u>Dr. Fadjar, S.H., M.H.</u><br>NIP. 197411112002121003
+    </div>`;
+    
+    html2pdf().from(div).set({jsPDF: {orientation: 'landscape', format: 'legal'}}).save();
+}
+
+function eksporTXT() {
+    let teks = "";
+    const jmlHari = new Date(document.getElementById('tahun').value, parseInt(document.getElementById('bulan').value)+1, 0).getDate();
+    pegawai.forEach((p, i) => {
+        for(let d=1; d<=jmlHari; d++) {
+            if(document.getElementById(`i-${i}-${d}`).value.toUpperCase() === 'H')
+                teks += `${p.nip}\t${document.getElementById('tahun').value}-${parseInt(document.getElementById('bulan').value)+1}-${d}\n`;
         }
-        htmlHeader1 += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
-        thead.innerHTML = htmlHeader1;
+    });
+    const blob = new Blob([teks], {type: "text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ADK_Uang_Makan.txt";
+    a.click();
+}
 
-        tbody.innerHTML = "";
-        dataPegawai.forEach((pegawai, index) => {
-            let row = `<tr>`;
-            row += `<td>${index + 1}</td>`;
-            row += `<td class="nama-kolom">${pegawai.nama}<span class="nip-teks">NIP: ${pegawai.nip}</span></td>`;
-            
-            for (let hari = 1; hari <= jumlahHari; hari++) {
-                let tglCek = new Date(tahun, bulan, hari);
-                let isWeekend = (tglCek.getDay() === 0 || tglCek.getDay() === 6);
-                let kelasLibur = isWeekend ? "hari-libur input-libur" : "";
-                let readonly = isWeekend ? "readonly placeholder='-'" : "";
-                
-                row += `<td class="${isWeekend ? 'hari-libur' : ''}">
-                    <input type="text" class="input-absen ${kelasLibur}" ${readonly} 
-                    id="input-${index}-${hari}" maxlength="2" onkeyup="hitungRekap(${index}, ${jumlahHari})">
-                </td>`;
-            }
-            
-            row += `<td id="rekap-H-${index}" class="rekap-cell">0</td>`;
-            row += `<td id="rekap-I-${index}" class="rekap-cell">0</td>`;
-            row += `<td id="rekap-S-${index}" class="rekap-cell">0</td>`;
-            row += `<td id="rekap-DL-${index}" class="rekap-cell">0</td>`;
-            row += `<td id="rekap-CT-${index}" class="rekap-cell">0</td>`;
-            row += `<td id="rekap-A-${index}" class="rekap-cell">0</td>`;
-            row += `</tr>`;
-            tbody.innerHTML += row;
-        });
-    }
-
-    function hitungRekap(indexPegawai, totalHari) {
-        let count = { H: 0, I: 0, S: 0, DL: 0, CT: 0, A: 0 };
-        for (let hari = 1; hari <= totalHari; hari++) {
-            let nilaiInput = document.getElementById(`input-${indexPegawai}-${hari}`).value.toUpperCase().trim();
-            if (count[nilaiInput] !== undefined) { count[nilaiInput]++; }
-        }
-        document.getElementById(`rekap-H-${indexPegawai}`).innerText = count.H;
-        document.getElementById(`rekap-I-${indexPegawai}`).innerText = count.I;
-        document.getElementById(`rekap-S-${indexPegawai}`).innerText = count.S;
-        document.getElementById(`rekap-DL-${indexPegawai}`).innerText = count.DL;
-        document.getElementById(`rekap-CT-${indexPegawai}`).innerText = count.CT;
-        document.getElementById(`rekap-A-${indexPegawai}`).innerText = count.A;
-    }
-
-    // Ekspor langsung ke PDF dengan Kop Surat Institusi yang baru
-    function unduhPDF() {
-        const pilihBulan = document.getElementById("pilihBulan");
-        const namaBulan = pilihBulan.options[pilihBulan.selectedIndex].text.toUpperCase();
-        const tahun = document.getElementById("pilihTahun").value;
-        
-        // Membuat wadah khusus untuk dicetak agar kop surat bisa ditambahkan
-        const wadahCetak = document.createElement('div');
-        wadahCetak.style.padding = '15px';
-        wadahCetak.style.backgroundColor = '#ffffff';
-        wadahCetak.style.color = '#000000';
-        
-        // Menambahkan Kop Laporan Resmi Kejaksaan Negeri Maluku Tenggara
-        wadahCetak.innerHTML = `
-            <h2 style="text-align: center; margin-bottom: 5px; font-size: 18px;">REKAPITULASI ABSENSI PEGAWAI</h2>
-            <h3 style="text-align: center; margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #333;">
-                KEJAKSAAN NEGERI MALUKU TENGGARA<br>
-                PERIODE BULAN ${namaBulan} ${tahun}
-            </h3>
-        `;
-        
-        // Menyalin tabel utama yang sudah diisi
-        const tabelAsli = document.getElementById("tabelUtama");
-        const tabelClone = tabelAsli.cloneNode(true);
-        tabelClone.style.fontSize = "11px"; // Mengecilkan font sedikit agar muat di kertas
-        
-        // Mengubah kotak input menjadi teks biasa
-        const inputAsli = tabelAsli.querySelectorAll('input');
-        const inputClone = tabelClone.querySelectorAll('input');
-        
-        for (let i = 0; i < inputAsli.length; i++) {
-            let nilai = inputAsli[i].value;
-            let selParent = inputClone[i].parentNode;
-            selParent.innerHTML = `<span style="font-weight:bold; font-size:12px;">${nilai}</span>`;
-        }
-        
-        wadahCetak.appendChild(tabelClone);
-        
-        // Konfigurasi kertas PDF (Legal/F4 agar kolom muat)
-        const opsi = {
-            margin:       0.2,
-            filename:     `Rekap_Absensi_${namaBulan}_${tahun}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, backgroundColor: '#ffffff' },
-            jsPDF:        { unit: 'in', format: 'legal', orientation: 'landscape' }
-        };
-        
-        // Memulai proses potret dan unduh PDF
-        html2pdf().set(opsi).from(wadahCetak).save();
-    }
-
-    function buatADK() {
-        const bulan = parseInt(document.getElementById("pilihBulan").value);
-        const tahun = parseInt(document.getElementById("pilihTahun").value);
-        const namaBulan = document.getElementById("pilihBulan").options[bulan].text.toUpperCase();
-        const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
-        
-        let teksADK = "";
-        dataPegawai.forEach((pegawai, index) => {
-            for (let hari = 1; hari <= jumlahHari; hari++) {
-                let inputElement = document.getElementById(`input-${index}-${hari}`);
-                if (inputElement && inputElement.value.toUpperCase().trim() === "H") {
-                    let strBulan = String(bulan + 1).padStart(2, '0');
-                    let strHari = String(hari).padStart(2, '0');
-                    let tanggalFormat = `${tahun}-${strBulan}-${strHari}`;
-                    teksADK += `${pegawai.nip}\t${tanggalFormat}\r\n`;
-                }
-            }
-        });
-        
-        if (teksADK === "") {
-            alert("Tidak ada data kehadiran (H) yang ditemukan untuk diekspor!");
-            return;
-        }
-
-        const namaFile = `Uang_Makan_${namaBulan}_${tahun}.txt`;
-        const blob = new Blob([teksADK], { type: "text/plain" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = namaFile;
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
-
-    window.onload = renderKalender;
+render();
 </script>
-
 </body>
 </html>
