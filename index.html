@@ -1,59 +1,229 @@
-function doGet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetPegawai = ss.getSheetByName("Pegawai");
-  var sheetAbsensi = ss.getSheetByName("Absensi");
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistem Absensi Kejaksaan Negeri Maluku Tenggara</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
+        .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; border: 1px solid #dee2e6; flex-wrap: wrap; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
+        th { background: #34495e; color: white; }
+        .nama-kolom { text-align: left; min-width: 200px; font-weight: bold; background-color: #f9f9f9; }
+        .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
+        .input-absen { width: 30px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; outline: none; }
+        .rekap-cell { font-weight: bold; background: #f1f2f6; }
+        .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
+        .only-print { display: none; }
+        @media print {
+            @page { size: 330mm 210mm landscape; margin: 10mm; }
+            .no-print { display: none !important; }
+            .only-print { display: block; }
+            thead { display: table-header-group !important; }
+            tr { page-break-inside: avoid !important; }
+            .input-absen { display: none !important; }
+            .print-val { display: inline !important; font-weight: bold; }
+        }
+        .print-val { display: none; }
+    </style>
+</head>
+<body>
 
-  var result = { pegawai: [], absensi: [] };
+<div class="container">
+    <div class="no-print">
+        <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
+        <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
+    </div>
+    
+    <div class="only-print" style="text-align: center; margin-bottom: 20px;">
+        <h2 style="margin:0; font-size: 16px;">REKAPITULASI ABSENSI PEGAWAI</h2>
+        <h3 style="margin:5px 0; font-size: 14px;">KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
+        <h4 id="cetakPeriode" style="margin:0; font-size: 12px; font-weight: normal;"></h4>
+    </div>
 
-  // 1. Mengambil data Pegawai
-  if (sheetPegawai) {
-    var dataPeg = sheetPegawai.getDataRange().getValues();
-    for (var i = 1; i < dataPeg.length; i++) {
-      if (dataPeg[i][0] != "") { // Mengambil NIP (Kolom A) dan Nama (Kolom B)
-        result.pegawai.push({ nip: dataPeg[i][0].toString(), n: dataPeg[i][1].toString() });
-      }
+    <div class="controls no-print">
+        <select id="bulan" onchange="render()"></select>
+        <input type="number" id="tahun" value="2026" onchange="gantiTahun()" style="width: 80px;">
+        <button onclick="window.print()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
+        <button onclick="bukaAdmin()" style="background:#8e44ad;">⚙️ Panel Admin</button>
+        <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Excel</button>
+        <button onclick="eksporTXT()" style="background:#27ae60;">📥 ADK TXT</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="tabelUtama"><thead></thead><tbody></tbody></table>
+    </div>
+
+    <div class="only-print" style="margin-top: 40px; page-break-inside: avoid;">
+        <table style="width: 100%; border: none; font-size: 12px;">
+            <tr><td style="width: 65%;"></td>
+            <td style="width: 35%; text-align: center;">
+                <span id="cetakLokasiTgl">Langgur, 5 Juli 2026</span><br>Mengetahui,<br>Kepala Kejaksaan Negeri Maluku Tenggara<br><br><br><br><br>
+                <u><b>Dr. Fadjar, S.H., M.H.</b></u><br>NIP. 197411112002121002
+            </td></tr>
+        </table>
+    </div>
+</div>
+
+<div id="modalAdmin" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Panel Admin (Data Pegawai)</h3>
+        <div id="authAdmin">
+            <input type="password" id="passAdmin" placeholder="Masukkan Kode Akses" style="width:90%; padding:8px; margin-bottom:10px;">
+            <button onclick="cekAkses()" style="background:#3498db; width:100%;">Buka Panel</button>
+        </div>
+        <div id="isiAdmin" style="display:none; margin-top:15px;">
+            <h4>Daftar Pegawai Tersinkronisasi</h4>
+            <div id="listAdmin" style="margin: 15px 0; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px;"></div>
+            <hr>
+            <p style="font-size:11px; color:#c0392b; font-weight:bold;">*Untuk mengubah pegawai, silakan edit langsung pada sheet "Pegawai" di Google Sheets Anda.</p>
+        </div>
+        <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%; margin-top:10px;">Tutup</button>
+    </div>
+</div>
+
+<script>
+// URL Anda yang Aktif
+const webAppUrl = "https://script.google.com/macros/s/AKfycbxie1D1AzCN2lNTPB3ZFHz5geQYa1V0-ztw9Ci7STPe8zrOda7xsXKu_QkSwbFh6cbIIg/exec";
+let pegawai = [];
+let dataAbsensiCloud = [];
+let liburNasional = [];
+
+const selectBulan = document.getElementById('bulan');
+const namaBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+namaBulan.forEach((m, i) => { selectBulan.innerHTML += `<option value="${i}">${m}</option>`; });
+selectBulan.value = new Date().getMonth();
+
+async function init() {
+    try {
+        let r = await fetch(webAppUrl);
+        let json = await r.json();
+        pegawai = json.pegawai || [];
+        dataAbsensiCloud = json.absensi || [];
+        render();
+    } catch(e) {
+        document.querySelector('tbody').innerHTML = `<tr><td colspan="39" style="padding:20px; font-weight:bold; color:#c0392b;">Gagal terhubung ke Cloud. Pastikan internet aktif.</td></tr>`;
     }
-  }
-
-  // 2. Mengambil data Absensi
-  if (sheetAbsensi) {
-    var dataAbs = sheetAbsensi.getDataRange().getValues();
-    for (var j = 1; j < dataAbs.length; j++) {
-      if (dataAbs[j][0] != "") { // Mengambil NIP, Tanggal, Status
-        result.absensi.push({
-          nip: dataAbs[j][0].toString(),
-          tanggal: dataAbs[j][1].toString(),
-          status: dataAbs[j][2].toString()
-        });
-      }
-    }
-  }
-
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader("Access-Control-Allow-Origin", "*");
 }
 
-function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Absensi");
-  var params = JSON.parse(e.postData.contents);
-  var data = sheet.getDataRange().getValues();
-  var updated = false;
-
-  // Cek jika data absensi di tanggal tersebut sudah ada, maka update/timpa
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0].toString() == params.nip.toString() && data[i][1].toString() == params.tanggal.toString()) {
-      sheet.getRange(i + 1, 3).setValue(params.status);
-      updated = true;
-      break;
-    }
-  }
-
-  // Jika belum ada, buat baris baru
-  if (!updated) {
-    sheet.appendRow([params.nip, params.tanggal, params.status]);
-  }
-
-  return ContentService.createTextOutput("Sukses").setMimeType(ContentService.MimeType.TEXT)
-    .setHeader("Access-Control-Allow-Origin", "*");
+function gantiTahun() {
+    const t = document.getElementById('tahun').value;
+    fetch(`https://date.nager.at/api/v3/PublicHolidays/${t}/ID`)
+    .then(r => r.json())
+    .then(d => { liburNasional = d.map(i => i.date); render(); })
+    .catch(() => render());
 }
+
+function render() {
+    const b = parseInt(document.getElementById('bulan').value);
+    const t = parseInt(document.getElementById('tahun').value);
+    const jmlHari = new Date(t, b+1, 0).getDate();
+    
+    document.getElementById('cetakPeriode').innerText = `PERIODE: ${namaBulan[b].toUpperCase()} ${t}`;
+    document.getElementById('cetakLokasiTgl').innerText = `Langgur, ${jmlHari} ${namaBulan[b]} ${t}`;
+
+    if (pegawai.length === 0) {
+        document.querySelector('tbody').innerHTML = `<tr><td colspan="${jmlHari + 8}" style="padding:20px; font-weight:bold; color:#f39c12;">Sedang memuat data dari Spreadsheet...</td></tr>`;
+        return;
+    }
+
+    let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
+    for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
+    head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
+    document.querySelector('thead').innerHTML = head;
+
+    let body = "";
+    pegawai.forEach((p, i) => {
+        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
+        for(let d=1; d<=jmlHari; d++) {
+            let tglObj = new Date(t, b, d);
+            let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(`${t}-${String(b+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`));
+            
+            // Cek Data dari Cloud, jika kosong cek dari LocalStorage
+            let tglKey = `${t}-${b+1}-${d}`;
+            let itemCloud = dataAbsensiCloud.find(x => x.nip == p.nip && x.tanggal == tglKey);
+            let localData = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
+            
+            let val = "";
+            if (itemCloud && itemCloud.status) val = itemCloud.status;
+            else if (localData[i] && localData[i][d]) val = localData[i][d];
+
+            body += `<td class="${isLibur ? 'libur' : ''}">
+                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" ${isLibur?'disabled':`onchange="simpanCloud('${p.nip}', '${tglKey}', this.value); simpanLokal(${i}, ${d}, this.value)"`}>
+                <span class="print-val">${val}</span>
+            </td>`;
+        }
+        body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
+    });
+    document.querySelector('tbody').innerHTML = body;
+    pegawai.forEach((p, i) => hitung(i, jmlHari));
+}
+
+function simpanCloud(nip, tgl, status) {
+    fetch(webAppUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nip, tanggal: tgl, status: status.toUpperCase() }) });
+}
+
+function simpanLokal(i, d, val) {
+    const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value;
+    let data = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
+    if(!data[i]) data[i] = {}; data[i][d] = val.toUpperCase();
+    localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
+    hitung(i, new Date(t, parseInt(b)+1, 0).getDate());
+}
+
+function hitung(i, jml) {
+    let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
+    for(let d=1; d<=jml; d++) {
+        let el = document.getElementById(`i-${i}-${d}`);
+        if(el && !el.disabled) {
+            let v = el.value.toUpperCase();
+            if(r.hasOwnProperty(v)) r[v]++;
+        }
+    }
+    for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
+}
+
+function bukaAdmin() {
+    document.getElementById('modalAdmin').style.display = 'flex';
+    document.getElementById('authAdmin').style.display = 'block';
+    document.getElementById('isiAdmin').style.display = 'none';
+    document.getElementById('passAdmin').value = "";
+}
+
+function cekAkses() {
+    if(document.getElementById('passAdmin').value === "tuharea17") {
+        document.getElementById('authAdmin').style.display = 'none';
+        document.getElementById('isiAdmin').style.display = 'block';
+        let l = document.getElementById('listAdmin'); l.innerHTML = "";
+        pegawai.forEach((p) => l.innerHTML += `<div style="padding:4px 0; border-bottom:1px solid #eee;">${p.n} (${p.nip})</div>`);
+    } else { alert("Kode Akses Salah!"); }
+}
+
+function eksporExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById('tabelUtama')), "Rekap_Absensi.xlsx"); }
+
+function eksporTXT() { 
+    const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value, jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    let txt = "NIP|TANGGAL|STATUS\r\n";
+    pegawai.forEach((p, i) => {
+        for(let d=1; d<=jmlHari; d++) {
+            let el = document.getElementById(`i-${i}-${d}`);
+            if(el && el.value) txt += `${p.nip}|${t}-${parseInt(b)+1}-${d}|${el.value.toUpperCase()}\r\n`;
+        }
+    });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([txt], {type: "text/plain"}));
+    link.download = `ADK_ABSENSI_${t}_${parseInt(b)+1}.txt`;
+    link.click();
+}
+
+gantiTahun();
+init();
+</script>
+</body>
+</html>
