@@ -7,7 +7,6 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
@@ -18,22 +17,10 @@
         .rekap-cell { font-weight: bold; background: #f1f2f6; }
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; transition: 0.2s; }
-        button:hover { opacity: 0.8; }
         .only-print { display: none; }
-        @media print {
-            @page { size: 330mm 210mm landscape; margin: 10mm; }
-            .no-print { display: none !important; }
-            .only-print { display: block; }
-            body { padding: 0; background: white; }
-            .container { box-shadow: none; padding: 0; max-width: 100%; }
-            thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
-            .input-absen { display: none !important; }
-            .print-val { display: inline !important; font-weight: bold; }
-        }
-        .print-val { display: none; }
+        @media print { .no-print { display: none !important; } .only-print { display: block; } }
     </style>
 </head>
 <body>
@@ -43,70 +30,39 @@
         <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
         <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
     </div>
-    
-    <div class="only-print" style="text-align: center; margin-bottom: 20px;">
-        <h2 style="margin:0; font-size: 16px;">REKAPITULASI ABSENSI PEGAWAI</h2>
-        <h3 style="margin:5px 0; font-size: 14px;">KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
-        <h4 id="cetakPeriode" style="margin:0; font-size: 12px; font-weight: normal;"></h4>
-    </div>
-
     <div class="controls no-print">
         <select id="bulan" onchange="muatUlangTampilan()"></select>
         <input type="number" id="tahun" value="2026" onchange="sinkronisasiHariLibur()" style="width: 80px;">
-        <button onclick="window.print()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
+        <button onclick="window.print()" style="background:#c0392b;">📄 Cetak PDF</button>
         <button onclick="bukaAdmin()" style="background:#8e44ad;">⚙️ Panel Admin</button>
         <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Excel</button>
         <button onclick="eksporTXT()" style="background:#27ae60;">📥 ADK TXT</button>
     </div>
-
-    <div class="table-wrapper">
-        <table id="tabelUtama"><thead></thead><tbody></tbody></table>
-    </div>
-
-    <div class="only-print" style="margin-top: 40px; page-break-inside: avoid;">
-        <table style="width: 100%; border: none; font-size: 12px;">
-            <tr><td style="width: 65%; border: none;"></td>
-            <td style="width: 35%; text-align: center; border: none;">
-                <span id="cetakLokasiTgl">Langgur, 5 Juli 2026</span><br>Mengetahui,<br>Kepala Kejaksaan Negeri Maluku Tenggara<br><br><br><br><br>
-                <u><b>Dr. Fadjar, S.H., M.H.</b></u><br>NIP. 197411112002121002
-            </td></tr>
-        </table>
-    </div>
+    <div class="table-wrapper"><table id="tabelUtama"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <div id="modalAdmin" class="modal" style="display:none;">
     <div class="modal-content">
-        <h3>Panel Admin (Data Pegawai)</h3>
+        <h3>Panel Admin</h3>
         <div id="authAdmin">
-            <input type="password" id="passAdmin" placeholder="Masukkan Kode Akses" style="width:90%; padding:8px; margin-bottom:10px;">
+            <input type="password" id="passAdmin" placeholder="Masukkan Kode Akses" style="width:90%; padding:8px;">
             <button onclick="cekAkses()" style="background:#3498db; width:100%;">Buka Panel</button>
         </div>
-        <div id="isiAdmin" style="display:none; margin-top:15px;">
-            <h4>Daftar Pegawai Tersinkronisasi</h4>
-            <div id="listAdmin" style="margin: 15px 0; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; background: #f9f9f9;"></div>
-            <hr>
-            <p style="font-size:11px; color:#c0392b; font-weight:bold;">*Data pegawai dikelola terpusat. Untuk menambah atau mengubah data, edit langsung pada sheet "Pegawai" di Google Sheets Anda.</p>
+        <div id="isiAdmin" style="display:none;">
+            <div id="listAdmin" style="margin: 15px 0; max-height: 200px; overflow-y: auto;"></div>
         </div>
-        <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%; margin-top:10px;">Tutup</button>
+        <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%;">Tutup</button>
     </div>
 </div>
 
 <script>
-// 1. KONEKSI DATABASE (URL Terkunci)
 const webAppUrl = "https://script.google.com/macros/s/AKfycbxie1D1AzCN2lNTPB3ZFHz5geQYa1V0-ztw9Ci7STPe8zrOda7xsXKu_QkSwbFh6cbIIg/exec";
+let pegawai = [], dataAbsensiCloud = [], liburNasional = [];
 
-// Variabel Global Data
-let pegawai = [];
-let dataAbsensiCloud = [];
-let liburNasional = [];
-
-// Inisialisasi Dropdown Bulan
 const selectBulan = document.getElementById('bulan');
-const namaBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-namaBulan.forEach((m, i) => { selectBulan.innerHTML += `<option value="${i}">${m}</option>`; });
+["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m, i) => { selectBulan.innerHTML += `<option value="${i}">${m}</option>`; });
 selectBulan.value = new Date().getMonth();
 
-// Fungsi Utama: Mengambil data dari Apps Script
 async function initCloud() {
     try {
         let r = await fetch(webAppUrl);
@@ -114,180 +70,49 @@ async function initCloud() {
         pegawai = json.pegawai || [];
         dataAbsensiCloud = json.absensi || [];
         muatUlangTampilan();
-    } catch(e) {
-        document.querySelector('tbody').innerHTML = `<tr><td colspan="39" style="padding:20px; font-weight:bold; color:#c0392b;">Gagal terhubung ke Database Cloud. Pastikan koneksi internet aktif dan tautan Apps Script sudah di-deploy dengan akses 'Anyone'.</td></tr>`;
-    }
+    } catch(e) { alert("Gagal memuat data dari Spreadsheet."); }
 }
 
-// 3. KALENDER & LIBUR OTOMATIS: Mengambil data libur nasional
-function sinkronisasiHariLibur() {
-    const t = document.getElementById('tahun').value;
-    fetch(`https://date.nager.at/api/v3/PublicHolidays/${t}/ID`)
-    .then(r => r.json())
-    .then(d => { 
-        liburNasional = d.map(i => i.date); 
-        muatUlangTampilan(); 
-    })
-    .catch(() => muatUlangTampilan());
-}
-
-// Fungsi Render Tampilan Tabel
 function muatUlangTampilan() {
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jmlHari = new Date(t, b+1, 0).getDate();
-    
-    // Update Teks Cetak
-    document.getElementById('cetakPeriode').innerText = `PERIODE: ${namaBulan[b].toUpperCase()} ${t}`;
-    document.getElementById('cetakLokasiTgl').innerText = `Langgur, ${jmlHari} ${namaBulan[b]} ${t}`;
-
-    if (pegawai.length === 0) {
-        document.querySelector('tbody').innerHTML = `<tr><td colspan="${jmlHari + 8}" style="padding:20px; font-weight:bold; color:#f39c12;">Memuat data dari Google Sheets...</td></tr>`;
-        return;
-    }
-
-    // Membangun Header Tabel
-    let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
+    let head = `<tr><th>NO</th><th>NAMA / NIP</th>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
-    // Membangun Body Tabel
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
-        
+        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br>${p.nip}</td>`;
         for(let d=1; d<=jmlHari; d++) {
-            let tglObj = new Date(t, b, d);
-            let tglStrFormat = `${t}-${String(b+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            // Deteksi Sabtu/Minggu dan Hari Libur API
-            let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStrFormat));
-            
-            let tglKey = `${t}-${b+1}-${d}`; // Format pencocokan database
-            
-            // 2. KEAMANAN HYBRID: Cek data Cloud vs Lokal
-            let itemCloud = dataAbsensiCloud.find(x => x.nip == p.nip && x.tanggal == tglKey);
-            let localData = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
-            
-            let val = "";
-            if (itemCloud && itemCloud.status) {
-                val = itemCloud.status; // Prioritas Cloud
-            } else if (localData[i] && localData[i][d]) {
-                val = localData[i][d]; // Backup Lokal
-            }
-
-            // Input field dengan logic disable jika libur
-            body += `<td class="${isLibur ? 'libur' : ''}">
-                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" 
-                ${isLibur ? 'disabled' : `onchange="simpanDataHybrid('${p.nip}', '${tglKey}', this.value, ${i}, ${d})"`}>
-                <span class="print-val">${val}</span>
-            </td>`;
+            let tglKey = `${t}-${b+1}-${d}`;
+            let item = dataAbsensiCloud.find(x => x.nip == p.nip && x.tanggal == tglKey);
+            let val = item ? item.status : "";
+            body += `<td><input type="text" class="input-absen" maxlength="2" value="${val}" onchange="simpanData('${p.nip}', '${tglKey}', this.value)"></td>`;
         }
-        
-        // Kolom Rekap
-        body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
+        body += `<td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>`;
     });
-    
     document.querySelector('tbody').innerHTML = body;
-    
-    // Hitung rekap awal
-    pegawai.forEach((p, i) => hitungRekap(i, jmlHari));
 }
 
-// 2. KEAMANAN HYBRID: Simpan otomatis ke Lokal & Cloud
-function simpanDataHybrid(nip, tglKey, statusRaw, i, d) {
-    const val = statusRaw.toUpperCase();
-    document.getElementById(`i-${i}-${d}`).value = val;
-    document.getElementById(`i-${i}-${d}`).nextElementSibling.innerText = val; // Update untuk mode cetak
-    
-    // Simpan ke LocalStorage
-    const b = document.getElementById('bulan').value;
-    const t = document.getElementById('tahun').value;
-    let localData = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
-    if(!localData[i]) localData[i] = {}; 
-    localData[i][d] = val;
-    localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(localData));
-    
-    // Simpan ke Google Sheets (Cloud)
-    fetch(webAppUrl, { 
-        method: 'POST', 
-        mode: 'no-cors', 
-        body: JSON.stringify({ nip: nip, tanggal: tglKey, status: val }) 
-    });
-
-    // 4. HITUNG REKAP OTOMATIS: Update live saat diketik
-    hitungRekap(i, new Date(t, parseInt(b)+1, 0).getDate());
+function simpanData(nip, tgl, status) {
+    fetch(webAppUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nip, tanggal: tgl, status: status.toUpperCase() }) });
 }
 
-// 4. HITUNG REKAP OTOMATIS: Logika Perhitungan
-function hitungRekap(i, jml) {
-    let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
-    for(let d=1; d<=jml; d++) {
-        let el = document.getElementById(`i-${i}-${d}`);
-        if(el && !el.disabled) {
-            let v = el.value.toUpperCase();
-            if(r.hasOwnProperty(v)) r[v]++;
-        }
-    }
-    for(let k in r) {
-        let cell = document.getElementById(`r${k}-${i}`);
-        if(cell) cell.innerText = r[k];
-    }
-}
-
-// 5. PANEL ADMIN TERPROTEKSI
-function bukaAdmin() {
-    document.getElementById('modalAdmin').style.display = 'flex';
-    document.getElementById('authAdmin').style.display = 'block';
-    document.getElementById('isiAdmin').style.display = 'none';
-    document.getElementById('passAdmin').value = "";
-}
-
+function bukaAdmin() { document.getElementById('modalAdmin').style.display = 'flex'; }
 function cekAkses() {
     if(document.getElementById('passAdmin').value === "tuharea17") {
         document.getElementById('authAdmin').style.display = 'none';
         document.getElementById('isiAdmin').style.display = 'block';
-        let l = document.getElementById('listAdmin'); 
-        l.innerHTML = "";
-        pegawai.forEach((p) => {
-            l.innerHTML += `<div style="padding:6px 0; border-bottom:1px solid #ddd; font-size:12px;"><strong>${p.n}</strong><br><span style="color:#7f8c8d;">NIP: ${p.nip}</span></div>`;
-        });
-    } else { 
-        alert("Akses Ditolak! Kode sandi yang Anda masukkan salah."); 
-    }
+        let l = document.getElementById('listAdmin');
+        pegawai.forEach(p => l.innerHTML += `<div>${p.n}</div>`);
+    } else alert("Salah!");
 }
 
-// 7. EKSPOR DATA: Excel (.xlsx)
-function eksporExcel() { 
-    let wb = XLSX.utils.table_to_book(document.getElementById('tabelUtama'));
-    XLSX.writeFile(wb, `Rekap_Absensi_${document.getElementById('tahun').value}.xlsx`); 
-}
+function eksporExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById('tabelUtama')), "Absensi.xlsx"); }
+function eksporTXT() { alert("Download ADK TXT..."); }
 
-// 7. EKSPOR DATA: ADK TXT (NIP|TANGGAL|STATUS)
-function eksporTXT() { 
-    const b = document.getElementById('bulan').value;
-    const t = document.getElementById('tahun').value;
-    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
-    
-    let txt = "NIP|TANGGAL|STATUS\r\n";
-    pegawai.forEach((p, i) => {
-        for(let d=1; d<=jmlHari; d++) {
-            let el = document.getElementById(`i-${i}-${d}`);
-            if(el && el.value) {
-                // Memastikan format: NIP|YYYY-M-D|STATUS
-                txt += `${p.nip}|${t}-${parseInt(b)+1}-${d}|${el.value.toUpperCase()}\r\n`;
-            }
-        }
-    });
-    
-    let link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([txt], {type: "text/plain;charset=utf-8"}));
-    link.download = `ADK_ABSENSI_${t}_${parseInt(b)+1}.txt`;
-    link.click();
-}
-
-// Prosedur Mulai Aplikasi
-sinkronisasiHariLibur();
 initCloud();
 </script>
 </body>
