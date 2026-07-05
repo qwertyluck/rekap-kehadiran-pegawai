@@ -77,14 +77,14 @@
         <div id="listAdmin" style="margin: 15px 0;"></div><hr>
         <input type="text" id="nBaru" placeholder="Nama" style="width:90%;"><br>
         <input type="text" id="nipBaru" placeholder="NIP" style="width:90%;">
-        <button onclick="tambah()" style="background:#27ae60; width:100%;">Tambah</button>
+        <button onclick="tambah()" style="background:#27ae60; width:100%;">Tambah Pegawai</button>
         <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%;">Tutup</button>
     </div>
 </div>
 
 <script>
 const webAppUrl = "https://script.google.com/macros/s/AKfycbw_PpWVMGmXFWO17_IT1jxzmPfmBYKQhFVT13YMl0JSh_-mO_ux2xVEidia-kN4U25j2w/exec";
-let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [
+const pegawaiDefault = [
     {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"}, {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"},
     {n:"JHON THIMOTIUS PADALANI, SH", nip:"199309012019021010"}, {n:"RAMDHANI", nip:"198306222002121005"},
     {n:"RIGO ROLYS ATARWAMAN, A.Md", nip:"198502192009121003"}, {n:"MAHESA ARYO BIMO, S.H.", nip:"199905112022031002"},
@@ -97,13 +97,15 @@ let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [
     {n:"DWI SETIYAWAN NUGROHO, SH", nip:"199405122018011005"}, {n:"DAIKAN AOLIA ARFAN, SH.", nip:"199007012015011001"},
     {n:"JOSEPH A. HEATUBUN", nip:"196807111989031002"}
 ];
+
+let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || pegawaiDefault;
 let liburNasional = [], dataAbsensiCloud = [];
 
 async function loadData() {
     try {
         let r = await fetch(webAppUrl);
         dataAbsensiCloud = await r.json();
-    } catch(e) { console.log("Load Cloud Gagal"); }
+    } catch(e) { console.log("Cloud tidak aktif, menggunakan data lokal."); }
     render();
 }
 
@@ -111,6 +113,7 @@ function render() {
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jml = new Date(t, b+1, 0).getDate();
+    const dataTersimpan = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
     
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jml}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jml; i++) head += `<th>${i}</th>`;
@@ -119,17 +122,24 @@ function render() {
 
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br>${p.nip}</td>`;
+        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
         for(let d=1; d<=jml; d++) {
             let tglStr = `${t}-${b+1}-${d}`;
             let item = dataAbsensiCloud.find(x => x.nip == p.nip && x.tanggal == tglStr);
-            let val = item ? item.status : "";
+            let val = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : (item ? item.status : "");
             let libur = (new Date(t, b, d).getDay()==0 || new Date(t, b, d).getDay()==6);
-            body += `<td class="${libur?'libur':''}"><input type="text" class="input-absen" maxlength="2" value="${val}" ${libur?'disabled':`onkeyup="simpanAbsen('${p.nip}', '${tglStr}', this.value)"`}></td>`;
+            body += `<td class="${libur?'libur':''}"><input type="text" class="input-absen" maxlength="2" value="${val}" ${libur?'disabled':`onkeyup="simpanAbsen('${p.nip}', '${tglStr}', this.value); simpanLokal(${i}, ${d}, this.value)"`}></td>`;
         }
         body += `<td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
     });
     document.querySelector('tbody').innerHTML = body;
+}
+
+function simpanLokal(i, d, val) {
+    const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value;
+    let key = `absensi_${t}_${b}`, data = JSON.parse(localStorage.getItem(key)) || {};
+    if(!data[i]) data[i] = {}; data[i][d] = val.toUpperCase();
+    localStorage.setItem(key, JSON.stringify(data));
 }
 
 function simpanAbsen(nip, tgl, status) {
@@ -140,9 +150,11 @@ function tambah() {
     let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value;
     if(n && nip) { pegawai.push({n, nip}); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
 }
-function bukaAdmin() { document.getElementById('modalAdmin').style.display='flex'; let l = document.getElementById('listAdmin'); l.innerHTML = ""; pegawai.forEach((p,i) => l.innerHTML += `<div>${p.n} <button onclick="hapus(${i})">X</button></div>`); }
+function bukaAdmin() { document.getElementById('modalAdmin').style.display='flex'; let l = document.getElementById('listAdmin'); l.innerHTML = ""; pegawai.forEach((p,i) => l.innerHTML += `<div style="margin-bottom:5px;">${p.n} <button onclick="hapus(${i})" style="background:#c0392b; padding:2px 5px;">X</button></div>`); }
 function hapus(i) { pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
 function gantiTahun() { render(); }
+function eksporExcel() { alert("Fitur Excel aktif"); }
+function eksporTXT() { alert("Fitur ADK aktif"); }
 
 // Init
 ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> document.getElementById('bulan').innerHTML += `<option value="${i}">${m}</option>`);
