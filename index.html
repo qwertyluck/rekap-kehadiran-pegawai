@@ -52,10 +52,19 @@ const webAppUrl = "https://script.google.com/macros/s/AKfycbxie1D1AzCN2lNTPB3ZFH
 let pegawai = [];
 
 async function init() {
-    let r = await fetch(webAppUrl);
-    pegawai = await r.json(); 
-    render();
-}
+    try {
+        let r = await fetch(webAppUrl);
+        let data = await r.json();
+        if (data.length > 0) {
+            pegawai = data;
+            render();
+        } else {
+            alert("Data Pegawai di Spreadsheet kosong atau tidak terbaca.");
+        }
+    } catch(e) {
+        console.error("Error:", e);
+        alert("Gagal memuat data. Pastikan Apps Script sudah di-deploy dengan akses 'Anyone'.");
+    }
 
 function render() {
     const b = parseInt(document.getElementById('bulan').value);
