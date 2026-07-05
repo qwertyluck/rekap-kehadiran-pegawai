@@ -19,12 +19,15 @@
         .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
         .only-print { display: none; }
         @media print {
             @page { size: 330mm 210mm landscape; margin: 10mm; }
             .no-print { display: none !important; }
             .only-print { display: block; }
+            body { padding: 0; background: white; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
             .input-absen { display: none !important; }
@@ -48,8 +51,8 @@
     </div>
 
     <div class="controls no-print">
-        <select id="bulan" onchange="render()"></select>
-        <input type="number" id="tahun" value="2026" onchange="gantiTahun()" style="width: 80px;">
+        <select id="bulan" onchange="muatUlangTampilan()"></select>
+        <input type="number" id="tahun" value="2026" onchange="sinkronisasiHariLibur()" style="width: 80px;">
         <button onclick="window.print()" style="background:#c0392b;">📄 Cetak PDF (F4)</button>
         <button onclick="bukaAdmin()" style="background:#8e44ad;">⚙️ Panel Admin</button>
         <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Excel</button>
@@ -62,8 +65,8 @@
 
     <div class="only-print" style="margin-top: 40px; page-break-inside: avoid;">
         <table style="width: 100%; border: none; font-size: 12px;">
-            <tr><td style="width: 65%;"></td>
-            <td style="width: 35%; text-align: center;">
+            <tr><td style="width: 65%; border: none;"></td>
+            <td style="width: 35%; text-align: center; border: none;">
                 <span id="cetakLokasiTgl">Langgur, 5 Juli 2026</span><br>Mengetahui,<br>Kepala Kejaksaan Negeri Maluku Tenggara<br><br><br><br><br>
                 <u><b>Dr. Fadjar, S.H., M.H.</b></u><br>NIP. 197411112002121002
             </td></tr>
@@ -80,104 +83,144 @@
         </div>
         <div id="isiAdmin" style="display:none; margin-top:15px;">
             <h4>Daftar Pegawai Tersinkronisasi</h4>
-            <div id="listAdmin" style="margin: 15px 0; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px;"></div>
+            <div id="listAdmin" style="margin: 15px 0; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; background: #f9f9f9;"></div>
             <hr>
-            <p style="font-size:11px; color:#c0392b; font-weight:bold;">*Untuk mengubah pegawai, silakan edit langsung pada sheet "Pegawai" di Google Sheets Anda.</p>
+            <p style="font-size:11px; color:#c0392b; font-weight:bold;">*Data pegawai dikelola terpusat. Untuk menambah atau mengubah data, edit langsung pada sheet "Pegawai" di Google Sheets Anda.</p>
         </div>
         <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%; margin-top:10px;">Tutup</button>
     </div>
 </div>
 
 <script>
-// URL Anda yang Aktif
+// 1. KONEKSI DATABASE (URL Terkunci)
 const webAppUrl = "https://script.google.com/macros/s/AKfycbxie1D1AzCN2lNTPB3ZFHz5geQYa1V0-ztw9Ci7STPe8zrOda7xsXKu_QkSwbFh6cbIIg/exec";
+
+// Variabel Global Data
 let pegawai = [];
 let dataAbsensiCloud = [];
 let liburNasional = [];
 
+// Inisialisasi Dropdown Bulan
 const selectBulan = document.getElementById('bulan');
 const namaBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 namaBulan.forEach((m, i) => { selectBulan.innerHTML += `<option value="${i}">${m}</option>`; });
 selectBulan.value = new Date().getMonth();
 
-async function init() {
+// Fungsi Utama: Mengambil data dari Apps Script
+async function initCloud() {
     try {
         let r = await fetch(webAppUrl);
         let json = await r.json();
         pegawai = json.pegawai || [];
         dataAbsensiCloud = json.absensi || [];
-        render();
+        muatUlangTampilan();
     } catch(e) {
-        document.querySelector('tbody').innerHTML = `<tr><td colspan="39" style="padding:20px; font-weight:bold; color:#c0392b;">Gagal terhubung ke Cloud. Pastikan internet aktif.</td></tr>`;
+        document.querySelector('tbody').innerHTML = `<tr><td colspan="39" style="padding:20px; font-weight:bold; color:#c0392b;">Gagal terhubung ke Database Cloud. Pastikan koneksi internet aktif dan tautan Apps Script sudah di-deploy dengan akses 'Anyone'.</td></tr>`;
     }
 }
 
-function gantiTahun() {
+// 3. KALENDER & LIBUR OTOMATIS: Mengambil data libur nasional
+function sinkronisasiHariLibur() {
     const t = document.getElementById('tahun').value;
     fetch(`https://date.nager.at/api/v3/PublicHolidays/${t}/ID`)
     .then(r => r.json())
-    .then(d => { liburNasional = d.map(i => i.date); render(); })
-    .catch(() => render());
+    .then(d => { 
+        liburNasional = d.map(i => i.date); 
+        muatUlangTampilan(); 
+    })
+    .catch(() => muatUlangTampilan());
 }
 
-function render() {
+// Fungsi Render Tampilan Tabel
+function muatUlangTampilan() {
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jmlHari = new Date(t, b+1, 0).getDate();
     
+    // Update Teks Cetak
     document.getElementById('cetakPeriode').innerText = `PERIODE: ${namaBulan[b].toUpperCase()} ${t}`;
     document.getElementById('cetakLokasiTgl').innerText = `Langgur, ${jmlHari} ${namaBulan[b]} ${t}`;
 
     if (pegawai.length === 0) {
-        document.querySelector('tbody').innerHTML = `<tr><td colspan="${jmlHari + 8}" style="padding:20px; font-weight:bold; color:#f39c12;">Sedang memuat data dari Spreadsheet...</td></tr>`;
+        document.querySelector('tbody').innerHTML = `<tr><td colspan="${jmlHari + 8}" style="padding:20px; font-weight:bold; color:#f39c12;">Memuat data dari Google Sheets...</td></tr>`;
         return;
     }
 
+    // Membangun Header Tabel
     let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
+    // Membangun Body Tabel
     let body = "";
     pegawai.forEach((p, i) => {
         body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
+        
         for(let d=1; d<=jmlHari; d++) {
             let tglObj = new Date(t, b, d);
-            let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(`${t}-${String(b+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`));
+            let tglStrFormat = `${t}-${String(b+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            // Deteksi Sabtu/Minggu dan Hari Libur API
+            let isLibur = (tglObj.getDay() === 0 || tglObj.getDay() === 6 || liburNasional.includes(tglStrFormat));
             
-            // Cek Data dari Cloud, jika kosong cek dari LocalStorage
-            let tglKey = `${t}-${b+1}-${d}`;
+            let tglKey = `${t}-${b+1}-${d}`; // Format pencocokan database
+            
+            // 2. KEAMANAN HYBRID: Cek data Cloud vs Lokal
             let itemCloud = dataAbsensiCloud.find(x => x.nip == p.nip && x.tanggal == tglKey);
             let localData = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
             
             let val = "";
-            if (itemCloud && itemCloud.status) val = itemCloud.status;
-            else if (localData[i] && localData[i][d]) val = localData[i][d];
+            if (itemCloud && itemCloud.status) {
+                val = itemCloud.status; // Prioritas Cloud
+            } else if (localData[i] && localData[i][d]) {
+                val = localData[i][d]; // Backup Lokal
+            }
 
+            // Input field dengan logic disable jika libur
             body += `<td class="${isLibur ? 'libur' : ''}">
-                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" ${isLibur?'disabled':`onchange="simpanCloud('${p.nip}', '${tglKey}', this.value); simpanLokal(${i}, ${d}, this.value)"`}>
+                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" 
+                ${isLibur ? 'disabled' : `onchange="simpanDataHybrid('${p.nip}', '${tglKey}', this.value, ${i}, ${d})"`}>
                 <span class="print-val">${val}</span>
             </td>`;
         }
+        
+        // Kolom Rekap
         body += `<td id="rH-${i}" class="rekap-cell">0</td><td id="rI-${i}" class="rekap-cell">0</td><td id="rS-${i}" class="rekap-cell">0</td><td id="rDL-${i}" class="rekap-cell">0</td><td id="rCT-${i}" class="rekap-cell">0</td><td id="rA-${i}" class="rekap-cell">0</td></tr>`;
     });
+    
     document.querySelector('tbody').innerHTML = body;
-    pegawai.forEach((p, i) => hitung(i, jmlHari));
+    
+    // Hitung rekap awal
+    pegawai.forEach((p, i) => hitungRekap(i, jmlHari));
 }
 
-function simpanCloud(nip, tgl, status) {
-    fetch(webAppUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nip, tanggal: tgl, status: status.toUpperCase() }) });
+// 2. KEAMANAN HYBRID: Simpan otomatis ke Lokal & Cloud
+function simpanDataHybrid(nip, tglKey, statusRaw, i, d) {
+    const val = statusRaw.toUpperCase();
+    document.getElementById(`i-${i}-${d}`).value = val;
+    document.getElementById(`i-${i}-${d}`).nextElementSibling.innerText = val; // Update untuk mode cetak
+    
+    // Simpan ke LocalStorage
+    const b = document.getElementById('bulan').value;
+    const t = document.getElementById('tahun').value;
+    let localData = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
+    if(!localData[i]) localData[i] = {}; 
+    localData[i][d] = val;
+    localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(localData));
+    
+    // Simpan ke Google Sheets (Cloud)
+    fetch(webAppUrl, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        body: JSON.stringify({ nip: nip, tanggal: tglKey, status: val }) 
+    });
+
+    // 4. HITUNG REKAP OTOMATIS: Update live saat diketik
+    hitungRekap(i, new Date(t, parseInt(b)+1, 0).getDate());
 }
 
-function simpanLokal(i, d, val) {
-    const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value;
-    let data = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
-    if(!data[i]) data[i] = {}; data[i][d] = val.toUpperCase();
-    localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
-    hitung(i, new Date(t, parseInt(b)+1, 0).getDate());
-}
-
-function hitung(i, jml) {
+// 4. HITUNG REKAP OTOMATIS: Logika Perhitungan
+function hitungRekap(i, jml) {
     let r = {H:0, I:0, S:0, DL:0, CT:0, A:0};
     for(let d=1; d<=jml; d++) {
         let el = document.getElementById(`i-${i}-${d}`);
@@ -186,9 +229,13 @@ function hitung(i, jml) {
             if(r.hasOwnProperty(v)) r[v]++;
         }
     }
-    for(let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
+    for(let k in r) {
+        let cell = document.getElementById(`r${k}-${i}`);
+        if(cell) cell.innerText = r[k];
+    }
 }
 
+// 5. PANEL ADMIN TERPROTEKSI
 function bukaAdmin() {
     document.getElementById('modalAdmin').style.display = 'flex';
     document.getElementById('authAdmin').style.display = 'block';
@@ -200,30 +247,48 @@ function cekAkses() {
     if(document.getElementById('passAdmin').value === "tuharea17") {
         document.getElementById('authAdmin').style.display = 'none';
         document.getElementById('isiAdmin').style.display = 'block';
-        let l = document.getElementById('listAdmin'); l.innerHTML = "";
-        pegawai.forEach((p) => l.innerHTML += `<div style="padding:4px 0; border-bottom:1px solid #eee;">${p.n} (${p.nip})</div>`);
-    } else { alert("Kode Akses Salah!"); }
+        let l = document.getElementById('listAdmin'); 
+        l.innerHTML = "";
+        pegawai.forEach((p) => {
+            l.innerHTML += `<div style="padding:6px 0; border-bottom:1px solid #ddd; font-size:12px;"><strong>${p.n}</strong><br><span style="color:#7f8c8d;">NIP: ${p.nip}</span></div>`;
+        });
+    } else { 
+        alert("Akses Ditolak! Kode sandi yang Anda masukkan salah."); 
+    }
 }
 
-function eksporExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById('tabelUtama')), "Rekap_Absensi.xlsx"); }
+// 7. EKSPOR DATA: Excel (.xlsx)
+function eksporExcel() { 
+    let wb = XLSX.utils.table_to_book(document.getElementById('tabelUtama'));
+    XLSX.writeFile(wb, `Rekap_Absensi_${document.getElementById('tahun').value}.xlsx`); 
+}
 
+// 7. EKSPOR DATA: ADK TXT (NIP|TANGGAL|STATUS)
 function eksporTXT() { 
-    const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value, jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    const b = document.getElementById('bulan').value;
+    const t = document.getElementById('tahun').value;
+    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
+    
     let txt = "NIP|TANGGAL|STATUS\r\n";
     pegawai.forEach((p, i) => {
         for(let d=1; d<=jmlHari; d++) {
             let el = document.getElementById(`i-${i}-${d}`);
-            if(el && el.value) txt += `${p.nip}|${t}-${parseInt(b)+1}-${d}|${el.value.toUpperCase()}\r\n`;
+            if(el && el.value) {
+                // Memastikan format: NIP|YYYY-M-D|STATUS
+                txt += `${p.nip}|${t}-${parseInt(b)+1}-${d}|${el.value.toUpperCase()}\r\n`;
+            }
         }
     });
+    
     let link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([txt], {type: "text/plain"}));
+    link.href = URL.createObjectURL(new Blob([txt], {type: "text/plain;charset=utf-8"}));
     link.download = `ADK_ABSENSI_${t}_${parseInt(b)+1}.txt`;
     link.click();
 }
 
-gantiTahun();
-init();
+// Prosedur Mulai Aplikasi
+sinkronisasiHariLibur();
+initCloud();
 </script>
 </body>
 </html>
