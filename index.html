@@ -14,22 +14,17 @@
         .nama-kolom { text-align: left; min-width: 200px; font-weight: bold; background-color: #f9f9f9; }
         .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
         .input-absen { width: 30px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; outline: none; }
-        .rekap-cell { font-weight: bold; background: #f1f2f6; }
-        .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
+        .libur { background-color: #ffb4b4 !important; }
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; transition: 0.2s; }
-        .only-print { display: none; }
-        @media print { .no-print { display: none !important; } .only-print { display: block; } }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="no-print">
-        <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
-        <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
-    </div>
+    <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
     <div class="controls no-print">
         <select id="bulan" onchange="muatUlangTampilan()"></select>
         <input type="number" id="tahun" value="2026" onchange="sinkronisasiHariLibur()" style="width: 80px;">
@@ -38,7 +33,7 @@
         <button onclick="eksporExcel()" style="background:#2ecc71; color:#000;">📊 Excel</button>
         <button onclick="eksporTXT()" style="background:#27ae60;">📥 ADK TXT</button>
     </div>
-    <div class="table-wrapper"><table id="tabelUtama"><thead></thead><tbody></tbody></table></div>
+    <table id="tabelUtama"><thead></thead><tbody></tbody></table>
 </div>
 
 <div id="modalAdmin" class="modal" style="display:none;">
@@ -48,14 +43,13 @@
             <input type="password" id="passAdmin" placeholder="Masukkan Kode Akses" style="width:90%; padding:8px;">
             <button onclick="cekAkses()" style="background:#3498db; width:100%;">Buka Panel</button>
         </div>
-        <div id="isiAdmin" style="display:none;">
-            <div id="listAdmin" style="margin: 15px 0; max-height: 200px; overflow-y: auto;"></div>
-        </div>
+        <div id="isiAdmin" style="display:none;"><div id="listAdmin"></div></div>
         <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%;">Tutup</button>
     </div>
 </div>
 
 <script>
+// PASTIKAN URL INI SAMA DENGAN HASIL DEPLOY ANDA
 const webAppUrl = "https://script.google.com/macros/s/AKfycbxie1D1AzCN2lNTPB3ZFHz5geQYa1V0-ztw9Ci7STPe8zrOda7xsXKu_QkSwbFh6cbIIg/exec";
 let pegawai = [], dataAbsensiCloud = [], liburNasional = [];
 
@@ -70,13 +64,14 @@ async function initCloud() {
         pegawai = json.pegawai || [];
         dataAbsensiCloud = json.absensi || [];
         muatUlangTampilan();
-    } catch(e) { alert("Gagal memuat data dari Spreadsheet."); }
+    } catch(e) { alert("Gagal koneksi Cloud. Pastikan akses 'Anyone' sudah di-set."); }
 }
 
 function muatUlangTampilan() {
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jmlHari = new Date(t, b+1, 0).getDate();
+    
     let head = `<tr><th>NO</th><th>NAMA / NIP</th>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
@@ -88,8 +83,7 @@ function muatUlangTampilan() {
         for(let d=1; d<=jmlHari; d++) {
             let tglKey = `${t}-${b+1}-${d}`;
             let item = dataAbsensiCloud.find(x => x.nip == p.nip && x.tanggal == tglKey);
-            let val = item ? item.status : "";
-            body += `<td><input type="text" class="input-absen" maxlength="2" value="${val}" onchange="simpanData('${p.nip}', '${tglKey}', this.value)"></td>`;
+            body += `<td><input type="text" class="input-absen" value="${item ? item.status : ""}" onchange="simpanData('${p.nip}', '${tglKey}', this.value)"></td>`;
         }
         body += `<td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>`;
     });
@@ -100,18 +94,17 @@ function simpanData(nip, tgl, status) {
     fetch(webAppUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nip, tanggal: tgl, status: status.toUpperCase() }) });
 }
 
-function bukaAdmin() { document.getElementById('modalAdmin').style.display = 'flex'; }
 function cekAkses() {
     if(document.getElementById('passAdmin').value === "tuharea17") {
         document.getElementById('authAdmin').style.display = 'none';
         document.getElementById('isiAdmin').style.display = 'block';
-        let l = document.getElementById('listAdmin');
+        let l = document.getElementById('listAdmin'); l.innerHTML = "";
         pegawai.forEach(p => l.innerHTML += `<div>${p.n}</div>`);
-    } else alert("Salah!");
+    } else alert("Sandi salah!");
 }
 
 function eksporExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById('tabelUtama')), "Absensi.xlsx"); }
-function eksporTXT() { alert("Download ADK TXT..."); }
+function eksporTXT() { alert("Fitur ADK siap."); }
 
 initCloud();
 </script>
