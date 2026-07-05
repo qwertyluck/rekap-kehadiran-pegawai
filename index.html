@@ -7,60 +7,61 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
-        .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; border: 1px solid #dee2e6; flex-wrap: wrap; }
+        .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; border: 1px solid #dee2e6; flex-wrap: wrap; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         th, td { border: 1px solid #7f8c8d; padding: 6px; text-align: center; }
         th { background: #34495e; color: white; }
-        .nama-kolom { text-align: left; min-width: 200px; font-weight: bold; background-color: #f9f9f9; }
-        .nip-teks { font-size: 10px; color: #7f8c8d; font-weight: normal; display: block; }
-        .input-absen { width: 35px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; background: transparent; outline: none; }
-        .rekap-cell { font-weight: bold; background: #f1f2f6; }
-        .libur { background-color: #ffb4b4 !important; cursor: not-allowed; }
+        .input-absen { width: 30px; border: none; text-align: center; font-weight: bold; text-transform: uppercase; }
+        .libur { background-color: #ffb4b4 !important; }
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; margin-top: 10px; }
-        @media print { .no-print { display: none !important; } }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 400px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="no-print">
-        <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
-        <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
-    </div>
-    <div class="controls no-print">
+    <h2>ABSENSI KEJAKSAAN NEGERI MALUKU TENGGARA</h2>
+    <div class="controls">
         <select id="bulan" onchange="render()"></select>
-        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 80px;">
+        <input type="number" id="tahun" value="2026" onchange="render()">
         <button onclick="window.print()" style="background:#c0392b;">📄 Cetak PDF</button>
         <button onclick="bukaAdmin()" style="background:#8e44ad;">⚙️ Panel Admin</button>
+        <button onclick="eksporExcel()" style="background:#2ecc71;">📊 Excel</button>
+        <button onclick="eksporTXT()" style="background:#27ae60;">📥 ADK TXT</button>
     </div>
     <table id="tabelUtama"><thead></thead><tbody></tbody></table>
 </div>
 
+<div id="modalAdmin" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Panel Admin (Data Pegawai)</h3>
+        <input type="password" id="passAdmin" placeholder="Masukkan Kode Akses" style="width:90%; padding:8px;">
+        <div id="isiAdmin" style="display:none; margin-top:15px;">
+            <input type="text" id="nBaru" placeholder="Nama">
+            <input type="text" id="nipBaru" placeholder="NIP">
+            <button onclick="tambah()" style="background:#27ae60;">Tambah</button>
+        </div>
+        <button onclick="cekAkses()" style="background:#3498db; width:100%; margin-top:10px;">Buka Panel</button>
+        <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%;">Tutup</button>
+    </div>
+</div>
+
 <script>
-const webAppUrl = "https://script.google.com/macros/s/AKfycbw_PpWVMGmXFWO17_IT1jxzmPfmBYKQhFVT13YMl0JSh_-mO_ux2xVEidia-kN4U25j2w/exec";
-let pegawai = []; 
-let dataAbsensiCloud = [];
+const webAppUrl = "https://script.google.com/macros/s/AKfycbxie1D1AzCN2lNTPB3ZFHz5geQYa1V0-ztw9Ci7STPe8zrOda7xsXKu_QkSwbFh6cbIIg/exec";
+let pegawai = [];
 
 async function init() {
     let r = await fetch(webAppUrl);
-    let json = await r.json();
-    pegawai = json.pegawai; // Menarik daftar pegawai dari Sheets
-    dataAbsensiCloud = json.absensi;
+    pegawai = await r.json(); 
     render();
 }
 
 function render() {
-    const b = document.getElementById('bulan').value;
-    const t = document.getElementById('tahun').value;
-    const jml = new Date(t, parseInt(b)+1, 0).getDate();
+    const b = parseInt(document.getElementById('bulan').value);
+    const t = parseInt(document.getElementById('tahun').value);
+    const jml = new Date(t, b+1, 0).getDate();
     
-    // Cari data bulan ini di cloud
-    let dataBulanIni = dataAbsensiCloud.find(x => x.tahun == t && x.bulan == b);
-    let dataAbsen = dataBulanIni ? JSON.parse(dataBulanIni.data) : {};
-
     let head = `<tr><th>NO</th><th>NAMA / NIP</th>`;
     for(let i=1; i<=jml; i++) head += `<th>${i}</th>`;
     head += `</tr>`;
@@ -68,26 +69,40 @@ function render() {
 
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><span class="nip-teks">${p.nip}</span></td>`;
+        body += `<tr><td>${i+1}</td><td style="text-align:left;">${p.n}<br><b>${p.nip}</b></td>`;
         for(let d=1; d<=jml; d++) {
-            let val = (dataAbsen[i] && dataAbsen[i][d]) ? dataAbsen[i][d] : "";
-            body += `<td><input type="text" class="input-absen" maxlength="2" value="${val}" onkeyup="simpan()"></td>`;
+            let tgl = new Date(t, b, d);
+            let isLibur = (tgl.getDay()==0 || tgl.getDay()==6);
+            body += `<td class="${isLibur?'libur':''}"><input type="text" class="input-absen" ${isLibur?'disabled':''} onchange="simpanAbsen('${p.nip}', '${t}-${b+1}-${d}', this.value)"></td>`;
         }
         body += `</tr>`;
     });
     document.querySelector('tbody').innerHTML = body;
 }
 
-function simpan() {
-    const b = document.getElementById('bulan').value;
-    const t = document.getElementById('tahun').value;
-    let dataAbsen = {};
-    // Ambil semua input dan kirim
-    // (Logika simpan seperti sebelumnya)
+function cekAkses() {
+    if(document.getElementById('passAdmin').value === "tuharea17") {
+        document.getElementById('isiAdmin').style.display = 'block';
+    } else { alert("Kode Akses Salah!"); }
 }
 
-// Inisialisasi
+function simpanAbsen(nip, tgl, status) {
+    fetch(webAppUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nip, tanggal: tgl, status: status.toUpperCase() }) });
+}
+
+function eksporExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById('tabelUtama')), "Absensi.xlsx"); }
+function eksporTXT() { 
+    let content = "Data Absensi ADK TXT..."; 
+    let blob = new Blob([content], {type: "text/plain"});
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "ADK_Absensi.txt";
+    link.click();
+}
+
 ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> document.getElementById('bulan').innerHTML += `<option value="${i}">${m}</option>`);
+document.getElementById('bulan').value = new Date().getMonth();
+function bukaAdmin() { document.getElementById('modalAdmin').style.display='flex'; }
 init();
 </script>
 </body>
