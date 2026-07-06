@@ -163,10 +163,42 @@ function validateInput(e) {
 
 function showToast(msg) { let t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = ""; }, 3000); }
 
-function exportExcel() { 
-    pegawai.forEach((_, i) => hitung(i, new Date(parseInt(document.getElementById('tahun').value), parseInt(document.getElementById('bulan').value)+1, 0).getDate()));
-    XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama"), {raw:true}), "Rekap_Absensi.xlsx"); 
-    showToast("File diunduh..."); 
+function imporExcel() { 
+    const file = document.getElementById('fileExcel').files[0]; 
+    if (!file) {
+        alert("Pilih file Excel terlebih dahulu!");
+        return;
+    }
+
+    const reader = new FileReader(); 
+    reader.onload = (e) => { 
+        const data = new Uint8Array(e.target.result); 
+        const workbook = XLSX.read(data, {type: 'array'}); 
+        
+        // Mengambil sheet pertama
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Konversi ke JSON dengan header: 0 agar kita bisa akses berdasarkan indeks
+        const json = XLSX.utils.sheet_to_json(worksheet, {header: 0, range: 1}); 
+        
+        // range: 1 artinya melewati baris pertama (header)
+        json.forEach(row => {
+            // row[0] adalah kolom A (Nama), row[1] adalah kolom B (NIP)
+            const nama = row[Object.keys(row)[0]];
+            const nip = row[Object.keys(row)[1]];
+            
+            if(nama && nip) {
+                pegawai.push({n: String(nama), nip: String(nip)});
+            }
+        });
+
+        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); 
+        render(); 
+        bukaAdmin(); 
+        showToast("Impor berhasil! " + json.length + " data ditambahkan."); 
+    }; 
+    reader.readAsArrayBuffer(file); 
 }
 
 function eksporTXT() {
