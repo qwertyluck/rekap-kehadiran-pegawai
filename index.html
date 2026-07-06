@@ -3,43 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Absensi Kejaksaan Negeri Maluku Tenggara</title>
+    <title>Sistem Absensi Pegawai</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #34495e; --secondary: #27ae60; --danger: #c0392b; --accent: #8e44ad; }
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; color: var(--primary); }
-        .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; }
+        h2, h3 { text-align: center; color: var(--primary); margin: 5px 0; }
+        .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; border: 1px solid #dee2e6; }
         
-        /* Sticky Header & Table Styles */
-        .table-wrapper { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+        /* Table & Sticky Header */
+        .table-wrapper { overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #bdc3c7; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        thead th { position: sticky; top: 0; background: var(--primary); color: white; z-index: 10; padding: 10px; }
+        thead th { position: sticky; top: 0; background: var(--primary); color: white; z-index: 10; padding: 10px; border: 1px solid #bdc3c7; }
         th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
         .nama-kolom { text-align: left; min-width: 180px; font-weight: bold; }
-        .input-absen { width: 25px; border: none; text-align: center; font-weight: bold; background: transparent; text-transform: uppercase; }
-        .libur { background-color: #ffeaea !important; }
         
+        /* Input & State */
+        .input-absen { width: 25px; border: 1px solid #ddd; text-align: center; font-weight: bold; text-transform: uppercase; }
+        .input-absen:focus { background: #e8f6f3; outline: 2px solid var(--secondary); }
+        .libur { background-color: #ffb4b4 !important; font-weight: bold; color: #721c24; }
+        
+        /* Buttons */
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.3s; }
         button:hover { filter: brightness(110%); transform: scale(1.02); }
         
-        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 10px; width: 400px; }
-        
-        /* Toast Notification */
-        #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 1001; bottom: 30px; }
-        #toast.show { visibility: visible; animation: fadein 0.5s; }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        /* Modal & Toast */
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 450px; max-height: 80vh; overflow-y: auto; }
+        #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 2001; bottom: 30px; left: 50%; transform: translateX(-50%); }
+        #toast.show { visibility: visible; }
+
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>REKAPITULASI ABSENSI PEGAWAI</h2>
-    <h3>KEJAKSAAN NEGERI MALUKU TENGGARA</h3>
+<div id="modalInfo" class="modal" style="display:flex;">
+    <div class="modal-content">
+        <h2>Selamat Datang</h2>
+        <p>Aplikasi Rekapitulasi Absensi Pegawai.</p>
+        <hr>
+        <p>Author: <b>Jalo Tuharea</b></p>
+        <button onclick="document.getElementById('modalInfo').style.display='none'" style="background:var(--primary); width:100%;">Mulai Gunakan Aplikasi</button>
+    </div>
+</div>
 
-    <div class="controls">
+<div class="container">
+    <div class="no-print">
+        <h2 id="judulInstansi">NAMA INSTANSI</h2>
+        <h3>REKAPITULASI ABSENSI PEGAWAI</h3>
+    </div>
+
+    <div class="controls no-print">
         <select id="bulan" onchange="render()"></select>
         <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px; padding: 5px;">
         <button style="background:var(--danger)" onclick="window.print()">📄 Cetak PDF</button>
@@ -52,32 +68,47 @@
     </div>
 </div>
 
-<div id="toast">Data Berhasil Disimpan!</div>
+<div id="toast">Notifikasi</div>
 
 <div id="modalAdmin" class="modal">
     <div class="modal-content">
-        <h3>Kelola Pegawai</h3>
-        <div id="listAdmin" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;"></div>
+        <h3>Panel Admin</h3>
+        <label>Nama Instansi:</label>
+        <input type="text" id="namaInstansiInput" style="width:95%; margin-bottom:15px; padding:8px;">
+        
+        <hr>
+        <h4>Kelola Pegawai</h4>
+        <div id="listAdmin" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
         <input type="text" id="nBaru" placeholder="Nama Pegawai" style="width:95%; padding:8px; margin-bottom:5px;">
-        <input type="text" id="nipBaru" placeholder="NIP (Angka Saja)" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width:95%; padding:8px; margin-bottom:10px;">
+        <input type="text" id="nipBaru" placeholder="NIP (Angka)" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width:95%; padding:8px; margin-bottom:10px;">
         <button onclick="tambah()" style="background:var(--secondary); width:100%;">Tambah Pegawai</button>
-        <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%; margin-top:5px;">Tutup</button>
+
+        <hr style="margin: 20px 0;">
+        <h4>Impor dari Excel/CSV</h4>
+        <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv">
+        <button onclick="imporExcel()" style="background:var(--accent); width:100%; margin-top:5px;">Impor Data</button>
+        
+        <button onclick="simpanPengaturan()" style="background:var(--primary); width:100%; margin-top:15px;">Simpan & Tutup</button>
     </div>
 </div>
 
 <script>
-let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [
-    {n:"LUSIA MARIA RENJAAN, S.H.", nip:"196911021991032003"},
-    {n:"ANDI SAIFULLAH SAKTI, SH.", nip:"199305292019021008"}
-];
+// Konfigurasi & Data Dasar
+const liburNasional = ["2026-01-01", "2026-02-17", "2026-03-31", "2026-04-18", "2026-05-01", "2026-05-14", "2026-05-29", "2026-06-01", "2026-06-25", "2026-08-17", "2026-09-02", "2026-12-25"];
+let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [];
+let namaInstansi = localStorage.getItem('namaInstansi') || "NAMA INSTANSI";
 
-function showToast(msg) {
-    let t = document.getElementById("toast");
-    t.innerText = msg; t.className = "show";
-    setTimeout(() => { t.className = ""; }, 3000);
+// Fungsi Core
+function updateJudul() { document.getElementById('judulInstansi').innerText = namaInstansi; }
+
+function isLibur(t, b, d) {
+    const tgl = new Date(t, b, d);
+    const dateStr = `${t}-${String(b+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    return (tgl.getDay() === 0 || tgl.getDay() === 6 || liburNasional.includes(dateStr));
 }
 
 function render() {
+    updateJudul();
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
     const jmlHari = new Date(t, b+1, 0).getDate();
@@ -92,12 +123,11 @@ function render() {
     pegawai.forEach((p, i) => {
         body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><small>${p.nip}</small></td>`;
         for(let d=1; d<=jmlHari; d++) {
-            let tgl = new Date(t, b, d);
-            let isLibur = (tgl.getDay() === 0 || tgl.getDay() === 6);
-            let val = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : "";
-            body += `<td class="${isLibur ? 'libur' : ''}">
+            const hariLibur = isLibur(t, b, d);
+            let val = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : (hariLibur ? "L" : "");
+            body += `<td class="${hariLibur ? 'libur' : ''}">
                 <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" 
-                ${isLibur?'disabled':`onkeyup="hitung(${i}, ${jmlHari}); simpan()"`}>
+                ${hariLibur?'disabled':`oninput="validateInput(event)" onkeyup="hitung(${i}, ${jmlHari}); simpan()"`}>
             </td>`;
         }
         body += `<td id="rH-${i}">0</td><td id="rI-${i}">0</td><td id="rS-${i}">0</td><td id="rDL-${i}">0</td><td id="rCT-${i}">0</td><td id="rA-${i}">0</td></tr>`;
@@ -118,44 +148,67 @@ function hitung(i, jmlHari) {
 function simpan() {
     const b = document.getElementById('bulan').value;
     const t = document.getElementById('tahun').value;
-    const jmlHari = new Date(t, parseInt(b)+1, 0).getDate();
     let data = {};
     for (let i = 0; i < pegawai.length; i++) {
         data[i] = {};
-        for (let d = 1; d <= jmlHari; d++) data[i][d] = document.getElementById(`i-${i}-${d}`).value;
+        for (let d = 1; d <= 31; d++) {
+            let el = document.getElementById(`i-${i}-${d}`);
+            if(el) data[i][d] = el.value;
+        }
     }
     localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
 }
 
-function exportExcel() {
-    XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama")), "Rekap_Absensi.xlsx");
-    showToast("File sedang diunduh...");
+// Fungsi Utilitas
+function validateInput(e) {
+    const val = e.target.value.toUpperCase();
+    const validKeys = ['H', 'I', 'S', 'DL', 'CT', 'A', ''];
+    if (!validKeys.includes(val)) { e.target.value = ""; alert("Gunakan: H, I, S, DL, CT, atau A"); }
 }
 
-function tambah() {
-    let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value;
-    if(n && nip) {
-        pegawai.push({n, nip});
-        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai));
-        render(); bukaAdmin(); showToast("Pegawai berhasil ditambah");
-    }
+function showToast(msg) { let t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = ""; }, 3000); }
+
+function exportExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama")), "Rekap_Absensi.xlsx"); showToast("File sedang diunduh..."); }
+
+function simpanPengaturan() {
+    namaInstansi = document.getElementById('namaInstansiInput').value;
+    localStorage.setItem('namaInstansi', namaInstansi);
+    updateJudul();
+    document.getElementById('modalAdmin').style.display='none';
+    showToast("Pengaturan disimpan!");
 }
 
-function bukaAdmin() {
-    document.getElementById('modalAdmin').style.display='flex';
-    let l = document.getElementById('listAdmin'); l.innerHTML = "";
-    pegawai.forEach((p,i) => l.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;">${p.n} <button onclick="hapus(${i})" style="background:var(--danger); padding:2px 8px;">Hapus</button></div>`);
+function tambah() { 
+    let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value; 
+    if(n && nip) { pegawai.push({n, nip}); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); } 
 }
 
-function hapus(i) {
-    pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai));
-    render(); bukaAdmin();
+function bukaAdmin() { 
+    document.getElementById('namaInstansiInput').value = namaInstansi;
+    document.getElementById('modalAdmin').style.display='flex'; 
+    let l = document.getElementById('listAdmin'); l.innerHTML = ""; pegawai.forEach((p,i) => l.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;">${p.n} <button onclick="hapus(${i})" style="background:var(--danger); padding:2px 8px;">Hapus</button></div>`); 
+}
+
+function hapus(i) { pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
+
+function imporExcel() { 
+    const file = document.getElementById('fileExcel').files[0]; 
+    if (!file) return; 
+    const reader = new FileReader(); 
+    reader.onload = (e) => { 
+        const data = new Uint8Array(e.target.result); 
+        const workbook = XLSX.read(data, {type: 'array'}); 
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]); 
+        json.forEach(row => { if(row.Nama && row.NIP) pegawai.push({n: row.Nama, nip: String(row.NIP)}); }); 
+        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Data berhasil diimpor!"); 
+    }; 
+    reader.readAsArrayBuffer(file); 
 }
 
 // Inisialisasi
-const b = document.getElementById('bulan');
-["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> b.innerHTML += `<option value="${i}">${m}</option>`);
-b.value = new Date().getMonth(); render();
+const b = document.getElementById('bulan'); 
+["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> b.innerHTML += `<option value="${i}">${m}</option>`); 
+b.value = new Date().getMonth(); updateJudul(); render();
 </script>
 </body>
 </html>
