@@ -3,39 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Absensi Pegawai Terpadu</title>
+    <title>Sistem Absensi Pegawai</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #34495e; --secondary: #27ae60; --danger: #c0392b; --accent: #8e44ad; --warning: #f39c12; }
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: var(--primary); margin: 5px 0; }
-        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; border: 1px solid #dee2e6; }
         
-        /* Sticky Header & Sticky Columns */
+        /* Sticky Header & Horizontal Scroll */
         .table-wrapper { overflow-x: auto; max-height: 550px; overflow-y: auto; border: 1px solid #bdc3c7; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         thead th { position: sticky; top: 0; background: var(--primary); color: white; z-index: 10; padding: 10px; border: 1px solid #bdc3c7; }
-        
-        /* Point 28: Sticky Kolom Nama/NIP/Gol/Jab */
-        .sticky-col { position: sticky; left: 0; z-index: 5; background: #fff; min-width: 250px; border-right: 2px solid #bdc3c7; padding: 10px; }
+        .sticky-col { position: sticky; left: 0; z-index: 5; background: #fff; min-width: 220px; border-right: 2px solid #bdc3c7; }
         
         th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
         .nama-kolom { text-align: left; font-weight: bold; }
-        
         .input-absen { width: 30px; border: 1px solid #ddd; text-align: center; font-weight: bold; text-transform: uppercase; }
-        .input-absen:disabled { background: #eee; cursor: not-allowed; }
+        .libur { background-color: #ffb4b4 !important; }
         
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: all 0.2s; }
-        button:hover { filter: brightness(110%); transform: translateY(-2px); }
-        
+        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: all 0.2s; }
+        button:hover { filter: brightness(110%); }
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 450px; max-height: 85vh; overflow-y: auto; }
-        
         #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 6px; padding: 15px; position: fixed; z-index: 2001; bottom: 30px; left: 50%; transform: translateX(-50%); }
         #toast.show { visibility: visible; }
-        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
@@ -57,21 +50,16 @@
 </div>
 
 <div class="container">
-    <div class="no-print">
-        <h2 id="judulInstansi">NAMA INSTANSI</h2>
-        <h3>REKAPITULASI ABSENSI PEGAWAI</h3>
-    </div>
-
+    <h2 id="judulInstansi">NAMA INSTANSI</h2>
     <div class="controls no-print">
         <select id="bulan" onchange="render()"></select>
-        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px; padding: 8px;">
+        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px;">
         <button style="background:var(--danger)" onclick="window.print()">📄 Cetak</button>
         <button style="background:var(--secondary)" onclick="exportExcel()">📊 Excel</button>
         <button style="background:var(--accent)" onclick="eksporTXT()">📥 ADK</button>
         <button style="background:var(--warning)" onclick="bersihkanDataBulanIni()">🧹 Bersih</button>
         <button style="background:var(--primary)" onclick="bukaAdmin()">⚙️ Admin</button>
     </div>
-
     <div class="table-wrapper">
         <table id="tabelUtama"><thead></thead><tbody></tbody></table>
     </div>
@@ -82,18 +70,16 @@
 <div id="modalAdmin" class="modal">
     <div class="modal-content">
         <h3>Panel Admin</h3>
-        <input type="text" id="namaInstansiInput" placeholder="Nama Instansi" style="width:100%; margin-bottom:10px; padding:8px;">
+        <label>Nama Instansi:</label>
+        <input type="text" id="namaInstansiInput" style="width:100%; margin-bottom:10px; padding:8px;">
+        <h4>Manajemen Pegawai</h4>
+        <div id="listAdmin" style="max-height: 200px; overflow-y: auto; background:#f9f9f9; padding:10px;"></div>
         <hr>
-        <h4>Kelola Pegawai</h4>
-        <div id="listAdmin" style="max-height: 200px; overflow-y: auto;"></div>
-        <input type="text" id="nBaru" placeholder="Nama Lengkap" style="width:100%; margin:5px 0; padding:8px;">
-        <input type="text" id="nipBaru" placeholder="NIP (Angka)" style="width:100%; margin:5px 0; padding:8px;">
+        <input type="text" id="nBaru" placeholder="Nama" style="width:100%; margin:5px 0; padding:8px;">
+        <input type="text" id="nipBaru" placeholder="NIP" style="width:100%; margin:5px 0; padding:8px;">
         <input type="text" id="golBaru" placeholder="Pangkat/Gol" style="width:100%; margin:5px 0; padding:8px;">
         <input type="text" id="jabBaru" placeholder="Jabatan" style="width:100%; margin:5px 0; padding:8px;">
         <button onclick="tambah()" style="background:var(--secondary); width:100%;">Tambah/Simpan Pegawai</button>
-        <hr>
-        <input type="file" id="fileExcel" accept=".xlsx, .csv">
-        <button onclick="imporExcel()" style="background:var(--accent); width:100%; margin-top:5px;">⬆️ Impor Data</button>
         <button onclick="document.getElementById('modalAdmin').style.display='none'" style="background:#95a5a6; width:100%; margin-top:10px;">Tutup</button>
     </div>
 </div>
@@ -103,39 +89,35 @@ let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [];
 let namaInstansi = localStorage.getItem('namaInstansi') || "NAMA INSTANSI";
 let editIndex = -1;
 
-function updateJudul() { document.getElementById('judulInstansi').innerText = namaInstansi; }
-function isLibur(t,b,d) { const date = new Date(t,b,d); return date.getDay()===0 || date.getDay()===6; }
-function dapatkanWarna(val) { const w = { 'A':'#ffcdd2', 'S':'#fff9c4', 'I':'#bbdefb', 'DL':'#c8e6c9', 'CT':'#e1bee7' }; return w[val.toUpperCase()] || 'transparent'; }
-
 function render() {
     updateJudul();
     const b = parseInt(document.getElementById('bulan').value);
     const t = parseInt(document.getElementById('tahun').value);
-    const jml = new Date(t, b+1, 0).getDate();
-    const data = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
+    const jmlHari = new Date(t, b+1, 0).getDate();
+    const dataTersimpan = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
 
-    let head = `<tr><th rowspan="2" class="sticky-col" style="z-index:12;">NO</th><th rowspan="2" class="sticky-col" style="z-index:12; left:30px;">NAMA/NIP/GOL/JAB</th><th colspan="${jml}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
-    for(let i=1; i<=jml; i++) head += `<th>${i}</th>`;
+    let head = `<tr><th rowspan="2" class="sticky-col" style="z-index:12;">NO</th><th rowspan="2" class="sticky-col" style="z-index:12; left:30px;">NAMA/NIP/GOL/JAB</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
+    for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
     let body = "";
     pegawai.forEach((p, i) => {
         body += `<tr><td class="sticky-col">${i+1}</td><td class="nama-kolom sticky-col" style="left:30px;">${p.n}<br><small>${p.nip}<br>${p.gol}<br>${p.jab}</small></td>`;
-        for(let d=1; d<=jml; d++) {
+        for(let d=1; d<=jmlHari; d++) {
             const hL = isLibur(t, b, d);
-            let val = (data[i] && data[i][d]) ? data[i][d] : (hL ? "L" : "");
-            body += `<td class="${hL ? 'libur' : ''}"><input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" ${hL?'disabled':`oninput="validateInput(event)" onkeyup="hitung(${i}, ${jml}); simpan()"`} style="background:${dapatkanWarna(val)}"></td>`;
+            let val = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : (hL ? "L" : "");
+            body += `<td class="${hL ? 'libur' : ''}"><input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" ${hL?'disabled':`oninput="validateInput(event)" onkeyup="hitung(${i}, ${jmlHari}); simpan()"`} style="background:${dapatkanWarna(val)}"></td>`;
         }
         body += `<td id="rH-${i}">0</td><td id="rI-${i}">0</td><td id="rS-${i}">0</td><td id="rDL-${i}">0</td><td id="rCT-${i}">0</td><td id="rA-${i}">0</td></tr>`;
     });
     document.querySelector('tbody').innerHTML = body;
-    pegawai.forEach((_, i) => hitung(i, jml));
+    pegawai.forEach((_, i) => hitung(i, jmlHari));
 }
 
 function tambah() {
-    let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value.replace(/[^0-9]/g, ''), gol = document.getElementById('golBaru').value, jab = document.getElementById('jabBaru').value;
-    if(!n || !nip || !gol || !jab) return alert("Semua data pegawai wajib diisi!");
+    let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value, gol = document.getElementById('golBaru').value, jab = document.getElementById('jabBaru').value;
+    if(!n || !nip || !gol || !jab) return alert("Semua kolom data pegawai wajib diisi!");
     if(editIndex > -1) { pegawai[editIndex] = {n, nip, gol, jab}; editIndex = -1; }
     else pegawai.push({n, nip, gol, jab});
     localStorage.setItem('daftarPegawai', JSON.stringify(pegawai));
@@ -159,63 +141,12 @@ function bukaAdmin() {
 
 function hapus(i) { pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
 
-function validateInput(e) {
-    const val = e.target.value.toUpperCase();
-    if(!['H','I','S','DL','CT','A','D','C',''].includes(val)) { e.target.value = ""; alert("Input tidak valid!"); }
-    e.target.style.backgroundColor = dapatkanWarna(val);
-    simpan();
-}
-
-function hitung(i, jml) {
-    let r = { 'H':0, 'I':0, 'S':0, 'DL':0, 'CT':0, 'A':0 };
-    for (let d=1; d<=jml; d++) {
-        let v = document.getElementById(`i-${i}-${d}`)?.value.toUpperCase();
-        if (r.hasOwnProperty(v)) r[v]++;
-    }
-    for (let k in r) { let c = document.getElementById(`r${k}-${i}`); if(c) c.innerText = r[k]; }
-}
-
-function simpan() {
-    const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value;
-    let data = {};
-    for (let i = 0; i < pegawai.length; i++) {
-        data[i] = {};
-        for (let d = 1; d <= 31; d++) { let el = document.getElementById(`i-${i}-${d}`); if(el) data[i][d] = el.value.toUpperCase(); }
-    }
-    localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
-}
-
-function exportExcel() {
-    XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama"), {raw:true}), "Rekap_Absensi.xlsx");
-    showToast("File diunduh");
-}
-
-function eksporTXT() {
-    let teks = ""; const b = document.getElementById('bulan').value, t = document.getElementById('tahun').value;
-    pegawai.forEach((p, i) => { for(let d=1; d<=31; d++) { let el = document.getElementById(`i-${i}-${d}`); if(el && el.value.toUpperCase() === 'H') teks += `${p.nip}\t${t}-${parseInt(b)+1}-${d}\n`; } });
-    if(teks) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([teks], {type:"text/plain"})); a.download="ADK.txt"; a.click(); }
-    else showToast("Data H kosong!");
-}
-
-function bersihkanDataBulanIni() {
-    if(confirm("Hapus data bulan ini?")) { localStorage.removeItem(`absensi_${document.getElementById('tahun').value}_${document.getElementById('bulan').value}`); render(); showToast("Data dibersihkan"); }
-}
-
-function simpanPengaturan() { namaInstansi = document.getElementById('namaInstansiInput').value; localStorage.setItem('namaInstansi', namaInstansi); updateJudul(); document.getElementById('modalAdmin').style.display='none'; showToast("Pengaturan disimpan"); }
+function isLibur(t,b,d) { const date = new Date(t,b,d); return date.getDay()===0 || date.getDay()===6; }
+function dapatkanWarna(val) { const w = { 'A':'#ffcdd2', 'S':'#fff9c4', 'I':'#bbdefb', 'DL':'#c8e6c9', 'CT':'#e1bee7' }; return w[val.toUpperCase()] || 'transparent'; }
+function updateJudul() { document.getElementById('judulInstansi').innerText = namaInstansi; }
 function showToast(m) { let t = document.getElementById("toast"); t.innerText = m; t.className = "show"; setTimeout(() => { t.className = ""; }, 3000); }
 
-function imporExcel() {
-    const file = document.getElementById('fileExcel').files[0];
-    if(!file) return alert("Pilih file!");
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const json = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type: 'array'}).Sheets[0], {header: 1});
-        for(let i=1; i<json.length; i++) { if(json[i][0] && json[i][1] && json[i][2] && json[i][3]) pegawai.push({n: json[i][0], nip: String(json[i][1]), gol: json[i][2], jab: json[i][3]}); }
-        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Impor sukses!");
-    };
-    reader.readAsArrayBuffer(file);
-}
-
+// Initial
 const b = document.getElementById('bulan'); ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> b.innerHTML += `<option value="${i}">${m}</option>`); b.value = new Date().getMonth(); render();
 </script>
 </body>
