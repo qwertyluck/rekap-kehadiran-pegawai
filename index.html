@@ -10,29 +10,22 @@
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: var(--primary); margin: 5px 0; }
-        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; border: 1px solid #dee2e6; }
-        
         .table-wrapper { overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #bdc3c7; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         thead th { position: sticky; top: 0; background: var(--primary); color: white; z-index: 10; padding: 10px; border: 1px solid #bdc3c7; }
         th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
         .nama-kolom { text-align: left; min-width: 180px; font-weight: bold; }
-        
-        .input-absen { width: 25px; border: 1px solid #ddd; text-align: center; font-weight: bold; text-transform: uppercase; }
+        .input-absen { width: 30px; border: 1px solid #ddd; text-align: center; font-weight: bold; text-transform: uppercase; }
         .input-absen:focus { background: #e8f6f3; outline: 2px solid var(--secondary); }
         .input-absen:disabled { background: #eee; cursor: not-allowed; }
         .libur { background-color: #ffb4b4 !important; font-weight: bold; color: #721c24; }
-        
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.3s; }
         button:hover { filter: brightness(110%); transform: scale(1.02); }
-        
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal-content { background: white; padding: 30px; border-radius: 12px; width: 450px; max-height: 80vh; overflow-y: auto; }
-        
         #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 2001; bottom: 30px; left: 50%; transform: translateX(-50%); }
         #toast.show { visibility: visible; }
-
         @media print { .no-print { display: none !important; } }
     </style>
 </head>
@@ -88,12 +81,10 @@
 </div>
 
 <script>
-// Variabel & Data
 const liburNasional = ["2026-01-01", "2026-02-17", "2026-03-31", "2026-05-01"];
 let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [];
 let namaInstansi = localStorage.getItem('namaInstansi') || "NAMA INSTANSI";
 
-// Fungsi Core
 function updateJudul() { document.getElementById('judulInstansi').innerText = namaInstansi; }
 
 function isLibur(t, b, d) {
@@ -148,7 +139,7 @@ function simpan() {
         data[i] = {};
         for (let d = 1; d <= 31; d++) {
             let el = document.getElementById(`i-${i}-${d}`);
-            if(el) data[i][d] = el.value;
+            if(el) data[i][d] = el.value.toUpperCase();
         }
     }
     localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
@@ -157,7 +148,16 @@ function simpan() {
 function validateInput(e) {
     const val = e.target.value.toUpperCase();
     const validKeys = ['H', 'I', 'S', 'DL', 'CT', 'A', ''];
-    if (!validKeys.includes(val)) { e.target.value = ""; alert("Gunakan: H, I, S, DL, CT, atau A"); }
+    // Izinkan karakter sementara (seperti 'D' sebelum jadi 'DL')
+    const partialKeys = ['D', 'C'];
+    
+    if (val.length === 2 && !validKeys.includes(val)) {
+        e.target.value = "";
+        alert("Input tidak valid!");
+    } else if (val.length === 1 && !validKeys.includes(val) && !partialKeys.includes(val)) {
+        e.target.value = "";
+        alert("Input tidak valid!");
+    }
     simpan();
 }
 
