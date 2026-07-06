@@ -7,59 +7,36 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #34495e; --secondary: #27ae60; --danger: #c0392b; --accent: #8e44ad; --warning: #f39c12; }
-        
-        /* Point 6: Background body dan typography */
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
-        
-        /* Point 6: Implementasi Card-based Layout */
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: var(--primary); margin: 5px 0; }
         
-        /* Bagian Kontrol (Terpisah secara visual dari data) */
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; border: 1px solid #dee2e6; }
         
-        /* Point 9: Horizontal Scroll (overflow-x: auto) */
+        /* Point 8, 9, 28: Sticky Header & Horizontal Scroll */
         .table-wrapper { overflow-x: auto; max-height: 550px; overflow-y: auto; border: 1px solid #bdc3c7; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        
-        /* Point 8 & 15: Sticky Header */
         thead th { position: sticky; top: 0; background: var(--primary); color: white; z-index: 10; padding: 10px; border: 1px solid #bdc3c7; }
-        th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
-        .nama-kolom { text-align: left; min-width: 180px; font-weight: bold; background: #fff; }
+        /* Sticky Column Nama */
+        .nama-sticky { position: sticky; left: 0; z-index: 5; background: #fff; min-width: 180px; border-right: 2px solid #bdc3c7; }
         
-        /* Elemen Input */
+        th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
+        .nama-kolom { text-align: left; font-weight: bold; }
+        
         .input-absen { width: 30px; border: 1px solid #ddd; text-align: center; font-weight: bold; text-transform: uppercase; transition: background-color 0.3s; }
         .input-absen:focus { outline: 2px solid var(--secondary); background-color: #fff !important; }
         .input-absen:disabled { background: #eee; cursor: not-allowed; }
         
-        /* Point 23: Hari Libur Terkunci (Warna Merah) */
         .libur { background-color: #ffb4b4 !important; font-weight: bold; color: #721c24; }
         
-        /* Point 10: Tombol dengan Indikator & Hover */
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; gap: 5px; justify-content: center; }
-        button:hover { filter: brightness(110%); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-        button:active { transform: translateY(0); }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
+        button:hover { filter: brightness(110%); transform: translateY(-2px); }
         
-        /* Modals */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 2000; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 450px; max-height: 80vh; overflow-y: auto; line-height: 1.5; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 450px; max-height: 80vh; overflow-y: auto; }
         
-        /* Point 11 & 21: Toast Notification */
-        #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 6px; padding: 15px; position: fixed; z-index: 2001; bottom: 30px; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-
-        /* Point 12 & 22: Mode Cetak yang Lebih Bersih */
-        @media print { 
-            body { background: white; padding: 0; }
-            .container { box-shadow: none; max-width: 100%; border: none; padding: 0; }
-            .no-print, .controls { display: none !important; }
-            .table-wrapper { overflow: visible; max-height: none; border: none; }
-            thead th { position: static; color: black; background: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
-            .input-absen { border: none; background: transparent !important; }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
+        #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 6px; padding: 15px; position: fixed; z-index: 2001; bottom: 30px; left: 50%; transform: translateX(-50%); }
+        #toast.show { visibility: visible; }
     </style>
 </head>
 <body>
@@ -68,7 +45,7 @@
     <div class="modal-content">
         <h2><b>Informasi File Kerja</b></h2>
         <p>Tata cara penggunaan:</p>
-        <ol style="margin-left: -10px;">
+        <ol>
             <li>Pilih Bulan dan Tahun yang sesuai.</li>
             <li>Input data kehadiran (H, I, S, DL, CT, A).<br>H=Hadir, I=Izin, S=Sakit, DL=Dinas Luar, CT=Cuti dan A=Alpa.</li>
             <li>Hari Sabtu & Minggu otomatis terkunci (Warna Merah).</li>
@@ -76,7 +53,7 @@
             <li>Untuk mengganti nama satuan kerja, penambahan pegawai, dan menghapus pegawai bisa dilakukan pada panel admin.</li>
         </ol>
         <p>Authors: <b>Jalo Tuharea</b></p>
-        <button onclick="document.getElementById('modalInfo').style.display='none'" style="background:var(--primary); width:100%; margin-top: 15px;">Mulai Gunakan Aplikasi</button>
+        <button onclick="document.getElementById('modalInfo').style.display='none'" style="background:var(--primary); width:100%;">Mulai Gunakan Aplikasi</button>
     </div>
 </div>
 
@@ -87,10 +64,10 @@
     </div>
 
     <div class="controls no-print">
-        <select id="bulan" onchange="render()" style="padding:8px; border-radius:4px; border:1px solid #ccc;"></select>
-        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 80px; padding: 8px; border-radius:4px; border:1px solid #ccc;">
+        <select id="bulan" onchange="render()"></select>
+        <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px; padding: 8px;">
         <button style="background:var(--danger)" onclick="window.print()">📄 Cetak PDF</button>
-        <button style="background:var(--secondary)" id="btnExport" onclick="exportExcel()">📊 Export Excel</button>
+        <button style="background:var(--secondary)" onclick="exportExcel()">📊 Export Excel</button>
         <button style="background:var(--accent)" onclick="eksporTXT()">📥 Ekspor ADK</button>
         <button style="background:var(--warning)" onclick="bersihkanDataBulanIni()">🧹 Bersihkan Data</button>
         <button style="background:var(--primary)" onclick="bukaAdmin()">⚙️ Panel Admin</button>
@@ -105,59 +82,40 @@
 
 <div id="modalAdmin" class="modal">
     <div class="modal-content">
-        <h3 style="margin-top:0; color:var(--primary);">Panel Admin</h3>
-        
-        <label style="font-weight:bold;">Nama Instansi:</label>
-        <input type="text" id="namaInstansiInput" style="width:100%; box-sizing:border-box; margin-bottom:15px; padding:10px; border:1px solid #ccc; border-radius:4px;">
+        <h3>Panel Admin</h3>
+        <label>Nama Instansi:</label>
+        <input type="text" id="namaInstansiInput" style="width:100%; box-sizing:border-box; margin-bottom:15px; padding:10px;">
         <hr>
-        
-        <h4 style="margin:10px 0;">Kelola Pegawai</h4>
-        <div id="listAdmin" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px; background:#f9f9f9; padding:10px; border-radius:4px;"></div>
-        
-        <input type="text" id="nBaru" placeholder="Nama Lengkap Pegawai" style="width:100%; box-sizing:border-box; padding:10px; margin-bottom:5px; border:1px solid #ccc; border-radius:4px;">
-        <input type="text" id="nipBaru" placeholder="NIP (Hanya Angka)" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width:100%; box-sizing:border-box; padding:10px; margin-bottom:10px; border:1px solid #ccc; border-radius:4px;">
-        <button onclick="tambah()" style="background:var(--secondary); width:100%;">+ Tambah Pegawai</button>
-        
+        <h4>Kelola Pegawai</h4>
+        <div id="listAdmin" style="max-height: 150px; overflow-y: auto; background:#f9f9f9; padding:10px;"></div>
+        <input type="text" id="nBaru" placeholder="Nama Pegawai" style="width:100%; box-sizing:border-box; padding:10px; margin-top:10px;">
+        <input type="text" id="nipBaru" placeholder="NIP (Hanya Angka)" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width:100%; box-sizing:border-box; padding:10px; margin-top:5px;">
+        <button onclick="tambah()" style="background:var(--secondary); width:100%; margin-top:10px;">+ Tambah Pegawai</button>
         <hr style="margin: 20px 0;">
-        <h4 style="margin:10px 0;">Impor Massal dari Excel</h4>
-        <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv" style="margin-bottom:10px; width:100%;">
-        <button onclick="imporExcel()" style="background:var(--accent); width:100%;">⬆️ Impor Data Pegawai</button>
-        
-        <button onclick="simpanPengaturan()" style="background:var(--primary); width:100%; margin-top:20px;">💾 Simpan & Tutup</button>
+        <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv">
+        <button onclick="imporExcel()" style="background:var(--accent); width:100%; margin-top:5px;">⬆️ Impor dari Excel</button>
+        <button onclick="simpanPengaturan()" style="background:var(--primary); width:100%; margin-top:15px;">💾 Simpan & Tutup</button>
     </div>
 </div>
 
 <script>
-// ==========================================
-// PENGATURAN AWAL & DATA (Point 23 & 25)
-// ==========================================
 const liburNasional = ["2026-01-01", "2026-02-17", "2026-03-31", "2026-05-01"];
 let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [];
 let namaInstansi = localStorage.getItem('namaInstansi') || "NAMA INSTANSI";
 
-// Set Instansi di Judul
 function updateJudul() { document.getElementById('judulInstansi').innerText = namaInstansi; }
 
-// Deteksi Hari Libur Otomatis
 function isLibur(t, b, d) {
     const tgl = new Date(t, b, d);
     const dateStr = `${t}-${String(b+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     return (tgl.getDay() === 0 || tgl.getDay() === 6 || liburNasional.includes(dateStr));
 }
 
-// Point 7: Conditional Formatting (Warna Otomatis)
 function dapatkanWarna(val) {
-    if (val === 'A') return '#ffcdd2'; // Merah Muda (Alpa)
-    if (val === 'S') return '#fff9c4'; // Kuning (Sakit)
-    if (val === 'I') return '#bbdefb'; // Biru (Izin)
-    if (val === 'DL') return '#c8e6c9'; // Hijau (Dinas Luar)
-    if (val === 'CT') return '#e1bee7'; // Ungu/Plum (Cuti)
-    return 'transparent';
+    const warna = { 'A':'#ffcdd2', 'S':'#fff9c4', 'I':'#bbdefb', 'DL':'#c8e6c9', 'CT':'#e1bee7' };
+    return warna[val] || 'transparent';
 }
 
-// ==========================================
-// FUNGSI RENDER TABEL & REKAP (Point 2, 5, 15)
-// ==========================================
 function render() {
     updateJudul();
     const b = parseInt(document.getElementById('bulan').value);
@@ -165,30 +123,23 @@ function render() {
     const jmlHari = new Date(t, b+1, 0).getDate();
     const dataTersimpan = JSON.parse(localStorage.getItem(`absensi_${t}_${b}`)) || {};
 
-    let head = `<tr><th rowspan="2">NO</th><th rowspan="2">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
+    let head = `<tr><th rowspan="2" class="nama-sticky">NO</th><th rowspan="2" class="nama-sticky" style="left:30px;">NAMA / NIP</th><th colspan="${jmlHari}">TANGGAL</th><th colspan="6">REKAP</th></tr><tr>`;
     for(let i=1; i<=jmlHari; i++) head += `<th>${i}</th>`;
     head += `<th>H</th><th>I</th><th>S</th><th>DL</th><th>CT</th><th>A</th></tr>`;
     document.querySelector('thead').innerHTML = head;
 
     let body = "";
     pegawai.forEach((p, i) => {
-        body += `<tr><td>${i+1}</td><td class="nama-kolom">${p.n}<br><small style="color:#7f8c8d;">${p.nip}</small></td>`;
+        body += `<tr><td class="nama-sticky">${i+1}</td><td class="nama-kolom nama-sticky" style="left:30px;">${p.n}<br><small style="color:#7f8c8d;">${p.nip}</small></td>`;
         for(let d=1; d<=jmlHari; d++) {
             const hariLibur = isLibur(t, b, d);
             let val = (dataTersimpan[i] && dataTersimpan[i][d]) ? dataTersimpan[i][d] : (hariLibur ? "L" : "");
-            let warnaBg = hariLibur ? "" : `background-color: ${dapatkanWarna(val)};`;
-            
             body += `<td class="${hariLibur ? 'libur' : ''}">
-                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" style="${warnaBg}"
+                <input type="text" class="input-absen" id="i-${i}-${d}" maxlength="2" value="${val}" style="background-color: ${dapatkanWarna(val)};"
                 ${hariLibur?'disabled':`oninput="validateInput(event)" onkeyup="hitung(${i}, ${jmlHari}); simpan()"`}>
             </td>`;
         }
-        body += `<td id="rH-${i}" style="font-weight:bold; background:#f1f2f6;">0</td>
-                 <td id="rI-${i}" style="font-weight:bold; background:#f1f2f6;">0</td>
-                 <td id="rS-${i}" style="font-weight:bold; background:#f1f2f6;">0</td>
-                 <td id="rDL-${i}" style="font-weight:bold; background:#f1f2f6;">0</td>
-                 <td id="rCT-${i}" style="font-weight:bold; background:#f1f2f6;">0</td>
-                 <td id="rA-${i}" style="font-weight:bold; background:#f1f2f6;">0</td></tr>`;
+        body += `<td id="rH-${i}">0</td><td id="rI-${i}">0</td><td id="rS-${i}">0</td><td id="rDL-${i}">0</td><td id="rCT-${i}">0</td><td id="rA-${i}">0</td></tr>`;
     });
     document.querySelector('tbody').innerHTML = body;
     pegawai.forEach((_, i) => hitung(i, jmlHari));
@@ -203,13 +154,9 @@ function hitung(i, jmlHari) {
             if (r.hasOwnProperty(v)) r[v]++;
         }
     }
-    for (let k in r) {
-        let cell = document.getElementById(`r${k}-${i}`);
-        if(cell) cell.innerText = r[k];
-    }
+    for (let k in r) { let c = document.getElementById(`r${k}-${i}`); if(c) c.innerText = r[k]; }
 }
 
-// Point 14 & 19: Simpan data yang solid
 function simpan() {
     const b = document.getElementById('bulan').value;
     const t = document.getElementById('tahun').value;
@@ -224,51 +171,22 @@ function simpan() {
     localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
 }
 
-// Point 17 & 18: Validasi Real-time Ketat (Mendukung DL & CT)
 function validateInput(e) {
     const val = e.target.value.toUpperCase();
-    const validKeys = ['H', 'I', 'S', 'DL', 'CT', 'A', ''];
-    const partialKeys = ['D', 'C']; // Izinkan karakter pertama sebelum huruf kedua diketik
-    
-    if (val.length === 2 && !validKeys.includes(val)) {
-        e.target.value = "";
-        alert("Input tidak valid! Gunakan: H, I, S, DL, CT, atau A");
-    } else if (val.length === 1 && !validKeys.includes(val) && !partialKeys.includes(val)) {
-        e.target.value = "";
-        alert("Input tidak valid! Gunakan: H, I, S, DL, CT, atau A");
-    }
-    
-    // Terapkan warna instan
-    e.target.style.backgroundColor = dapatkanWarna(e.target.value.toUpperCase());
+    const valid = ['H', 'I', 'S', 'DL', 'CT', 'A', 'D', 'C', ''];
+    if (!valid.includes(val)) { e.target.value = ""; alert("Input tidak valid!"); }
+    e.target.style.backgroundColor = dapatkanWarna(val);
     simpan();
 }
 
-// ==========================================
-// FITUR PENGELOLAAN DATA (EXPORT, IMPORT, HAPUS)
-// ==========================================
+function showToast(msg) { let t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = ""; }, 3000); }
 
-// Point 11 & 16: Notifikasi Toast
-function showToast(msg) { 
-    let t = document.getElementById("toast"); 
-    t.innerText = msg; 
-    t.className = "show"; 
-    setTimeout(() => { t.className = ""; }, 3000); 
-}
-
-// Point 3 & 10: Export Excel dengan status loading
 function exportExcel() { 
-    let btn = document.getElementById("btnExport");
-    btn.innerHTML = "⏳ Memproses...";
-    
-    setTimeout(() => {
-        pegawai.forEach((_, i) => hitung(i, new Date(parseInt(document.getElementById('tahun').value), parseInt(document.getElementById('bulan').value)+1, 0).getDate()));
-        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama"), {raw:true}), "Rekap_Absensi_Pegawai.xlsx"); 
-        showToast("File Excel berhasil diunduh."); 
-        btn.innerHTML = "📊 Export Excel";
-    }, 500);
+    pegawai.forEach((_, i) => hitung(i, new Date(parseInt(document.getElementById('tahun').value), parseInt(document.getElementById('bulan').value)+1, 0).getDate()));
+    XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama"), {raw:true}), "Rekap_Absensi.xlsx"); 
+    showToast("File diunduh..."); 
 }
 
-// Point 13: Export txt (ADK)
 function eksporTXT() {
     let teks = "";
     const b = parseInt(document.getElementById('bulan').value);
@@ -280,134 +198,47 @@ function eksporTXT() {
             if(el && el.value.toUpperCase() === 'H') teks += `${p.nip}\t${t}-${String(b+1).padStart(2, '0')}-${String(d).padStart(2, '0')}\n`;
         }
     });
-    if(teks === "") return showToast("Gagal Export: Tidak ada data kehadiran (H)!");
-    const a = document.createElement("a"); 
-    a.href = URL.createObjectURL(new Blob([teks], {type: "text/plain"})); 
-    a.download = `ADK_Kehadiran_${b+1}_${t}.txt`; 
-    a.click();
-    showToast("File ADK (.txt) berhasil diunduh.");
+    if(teks === "") return showToast("Data H kosong!");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([teks], {type: "text/plain"})); a.download = "ADK_Kehadiran.txt"; a.click();
 }
 
-// Point 26: Membersihkan Lembar Kerja pada bulan yang aktif saja
-function bersihkanDataBulanIni() {
-    const b = document.getElementById('bulan').value;
-    const t = document.getElementById('tahun').value;
-    const bulanStr = document.getElementById('bulan').options[b].text;
-    
-    if(confirm(`PERINGATAN!\n\nApakah Anda yakin ingin MENGHAPUS SELURUH INPUT kehadiran pada bulan ${bulanStr} tahun ${t}?\n\n(Catatan: Data di bulan lain tidak akan terhapus).`)) {
-        localStorage.removeItem(`absensi_${t}_${b}`);
-        render(); // Render ulang akan memuat form kosong
-        showToast(`Lembar kerja bulan ${bulanStr} telah dibersihkan.`);
-    }
-}
-
-// ==========================================
-// PANEL ADMIN (Point 1, 4, 20, 27)
-// ==========================================
 function simpanPengaturan() {
     namaInstansi = document.getElementById('namaInstansiInput').value;
     localStorage.setItem('namaInstansi', namaInstansi);
     updateJudul();
     document.getElementById('modalAdmin').style.display='none';
-    showToast("Pengaturan dan Data Pegawai disimpan!");
+    showToast("Pengaturan disimpan!");
 }
 
 function tambah() { 
     let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value; 
-    if(n && nip) { 
-        pegawai.push({n, nip}); 
-        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); 
-        document.getElementById('nBaru').value = "";
-        document.getElementById('nipBaru').value = "";
-        render(); 
-        bukaAdmin(); 
-        showToast("Pegawai baru ditambahkan."); 
-    } else {
-        alert("Nama dan NIP harus diisi!");
-    }
+    if(n && nip) { pegawai.push({n, nip}); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Pegawai ditambah"); } 
 }
 
-function bukaAdmin() { 
-    document.getElementById('namaInstansiInput').value = namaInstansi; 
-    document.getElementById('modalAdmin').style.display='flex'; 
-    let l = document.getElementById('listAdmin'); 
-    l.innerHTML = ""; 
-    pegawai.forEach((p,i) => {
-        l.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #ddd; padding-bottom:5px;">
-            <span style="font-size:12px;"><b>${p.n}</b> (${p.nip})</span>
-            <button onclick="hapus(${i})" style="background:var(--danger); padding:4px 8px; font-size:11px;">Hapus</button>
-        </div>`;
-    }); 
+function bukaAdmin() { document.getElementById('namaInstansiInput').value = namaInstansi; document.getElementById('modalAdmin').style.display='flex'; let l = document.getElementById('listAdmin'); l.innerHTML = ""; pegawai.forEach((p,i) => l.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${p.n}</span><button onclick="hapus(${i})" style="background:var(--danger); padding:2px 8px;">Hapus</button></div>`); }
+
+function hapus(i) { pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
+
+function bersihkanDataBulanIni() {
+    const b = document.getElementById('bulan').value;
+    const t = document.getElementById('tahun').value;
+    if(confirm("Hapus data bulan ini?")) { localStorage.removeItem(`absensi_${t}_${b}`); render(); showToast("Data dibersihkan"); }
 }
 
-function hapus(i) { 
-    if(confirm(`Hapus pegawai ${pegawai[i].n}?`)) {
-        pegawai.splice(i,1); 
-        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); 
-        render(); 
-        bukaAdmin(); 
-    }
-}
-
-// Point 27: Impor Excel Aman (Bypass header name & CSP Friendly)
 function imporExcel() { 
-    const fileInput = document.getElementById('fileExcel');
-    const file = fileInput.files[0]; 
-    
-    if (!file) {
-        return alert("Pilih file Excel/CSV terlebih dahulu!");
-    }
-
-    if (typeof XLSX === 'undefined') {
-        return alert("Library XLSX terblokir. Matikan AdBlock/Extension atau gunakan koneksi lain.");
-    }
-
+    const file = document.getElementById('fileExcel').files[0]; if (!file) return; 
     const reader = new FileReader(); 
-    reader.onload = function(e) { 
-        try {
-            const data = new Uint8Array(e.target.result); 
-            const workbook = XLSX.read(data, {type: 'array'}); 
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            
-            // Baca Excel murni sebagai Array dua dimensi tanpa mempedulikan nama Header baris pertama
-            const json = XLSX.utils.sheet_to_json(worksheet, {header: 1}); 
-            
-            // Mulai loop dari index 1 untuk melewati baris header
-            let count = 0;
-            for(let i = 1; i < json.length; i++) {
-                const row = json[i];
-                const nama = row[0]; // Kolom A
-                const nip = row[1];  // Kolom B
-                
-                if(nama && nip) {
-                    pegawai.push({n: String(nama), nip: String(nip)});
-                    count++;
-                }
-            }
-            
-            localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); 
-            render(); 
-            bukaAdmin(); 
-            showToast(`Impor berhasil! ${count} Pegawai ditambahkan.`);
-            fileInput.value = ""; // Reset input file
-        } catch (err) {
-            console.error(err);
-            alert("Gagal membaca file Excel. Pastikan format Kolom A (Nama) dan Kolom B (NIP).");
-        }
+    reader.onload = (e) => { 
+        const json = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type: 'array'}).Sheets[0], {header: 1}); 
+        for(let i=1; i<json.length; i++) { if(json[i][0] && json[i][1]) pegawai.push({n: json[i][0], nip: String(json[i][1])}); } 
+        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Impor berhasil!"); 
     }; 
     reader.readAsArrayBuffer(file); 
 }
 
-// ==========================================
-// INISIALISASI SAAT HALAMAN DIBUKA
-// ==========================================
 const b = document.getElementById('bulan'); 
-["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i) => {
-    b.innerHTML += `<option value="${i}">${m}</option>`;
-}); 
-b.value = new Date().getMonth(); 
-document.getElementById('tahun').value = new Date().getFullYear();
-render();
+["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> b.innerHTML += `<option value="${i}">${m}</option>`); 
+b.value = new Date().getMonth(); updateJudul(); render();
 </script>
 </body>
 </html>
