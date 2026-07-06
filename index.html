@@ -10,27 +10,26 @@
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h2, h3 { text-align: center; color: var(--primary); margin: 5px 0; }
+        
         .controls { background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; border: 1px solid #dee2e6; }
         
-        /* Table & Sticky Header */
         .table-wrapper { overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #bdc3c7; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
         thead th { position: sticky; top: 0; background: var(--primary); color: white; z-index: 10; padding: 10px; border: 1px solid #bdc3c7; }
         th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
         .nama-kolom { text-align: left; min-width: 180px; font-weight: bold; }
         
-        /* Input & State */
         .input-absen { width: 25px; border: 1px solid #ddd; text-align: center; font-weight: bold; text-transform: uppercase; }
         .input-absen:focus { background: #e8f6f3; outline: 2px solid var(--secondary); }
+        .input-absen:disabled { background: #eee; cursor: not-allowed; }
         .libur { background-color: #ffb4b4 !important; font-weight: bold; color: #721c24; }
         
-        /* Buttons */
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.3s; }
         button:hover { filter: brightness(110%); transform: scale(1.02); }
         
-        /* Modal & Toast */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal-content { background: white; padding: 30px; border-radius: 12px; width: 450px; max-height: 80vh; overflow-y: auto; }
+        
         #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 2001; bottom: 30px; left: 50%; transform: translateX(-50%); }
         #toast.show { visibility: visible; }
 
@@ -43,9 +42,8 @@
     <div class="modal-content">
         <h2>Selamat Datang</h2>
         <p>Aplikasi Rekapitulasi Absensi Pegawai.</p>
-        <hr>
         <p>Author: <b>Jalo Tuharea</b></p>
-        <button onclick="document.getElementById('modalInfo').style.display='none'" style="background:var(--primary); width:100%;">Mulai Gunakan Aplikasi</button>
+        <button onclick="document.getElementById('modalInfo').style.display='none'" style="background:var(--primary); width:100%;">Mulai Gunakan</button>
     </div>
 </div>
 
@@ -60,7 +58,8 @@
         <input type="number" id="tahun" value="2026" onchange="render()" style="width: 70px; padding: 5px;">
         <button style="background:var(--danger)" onclick="window.print()">📄 Cetak PDF</button>
         <button style="background:var(--secondary)" onclick="exportExcel()">📊 Export Excel</button>
-        <button style="background:var(--accent)" onclick="bukaAdmin()">⚙️ Panel Admin</button>
+        <button style="background:var(--accent)" onclick="eksporTXT()">📥 Ekspor ADK</button>
+        <button style="background:var(--primary)" onclick="bukaAdmin()">⚙️ Panel Admin</button>
     </div>
 
     <div class="table-wrapper">
@@ -75,26 +74,22 @@
         <h3>Panel Admin</h3>
         <label>Nama Instansi:</label>
         <input type="text" id="namaInstansiInput" style="width:95%; margin-bottom:15px; padding:8px;">
-        
         <hr>
         <h4>Kelola Pegawai</h4>
         <div id="listAdmin" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
         <input type="text" id="nBaru" placeholder="Nama Pegawai" style="width:95%; padding:8px; margin-bottom:5px;">
         <input type="text" id="nipBaru" placeholder="NIP (Angka)" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width:95%; padding:8px; margin-bottom:10px;">
         <button onclick="tambah()" style="background:var(--secondary); width:100%;">Tambah Pegawai</button>
-
         <hr style="margin: 20px 0;">
-        <h4>Impor dari Excel/CSV</h4>
         <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv">
-        <button onclick="imporExcel()" style="background:var(--accent); width:100%; margin-top:5px;">Impor Data</button>
-        
+        <button onclick="imporExcel()" style="background:var(--accent); width:100%; margin-top:5px;">Impor dari Excel</button>
         <button onclick="simpanPengaturan()" style="background:var(--primary); width:100%; margin-top:15px;">Simpan & Tutup</button>
     </div>
 </div>
 
 <script>
-// Konfigurasi & Data Dasar
-const liburNasional = ["2026-01-01", "2026-02-17", "2026-03-31", "2026-04-18", "2026-05-01", "2026-05-14", "2026-05-29", "2026-06-01", "2026-06-25", "2026-08-17", "2026-09-02", "2026-12-25"];
+// Variabel & Data
+const liburNasional = ["2026-01-01", "2026-02-17", "2026-03-31", "2026-05-01"];
 let pegawai = JSON.parse(localStorage.getItem('daftarPegawai')) || [];
 let namaInstansi = localStorage.getItem('namaInstansi') || "NAMA INSTANSI";
 
@@ -139,7 +134,7 @@ function render() {
 function hitung(i, jmlHari) {
     let r = { 'H':0, 'I':0, 'S':0, 'DL':0, 'CT':0, 'A':0 };
     for (let d=1; d<=jmlHari; d++) {
-        let v = document.getElementById(`i-${i}-${d}`).value.toUpperCase();
+        let v = document.getElementById(`i-${i}-${d}`)?.value.toUpperCase();
         if (r.hasOwnProperty(v)) r[v]++;
     }
     for (let k in r) document.getElementById(`r${k}-${i}`).innerText = r[k];
@@ -159,16 +154,35 @@ function simpan() {
     localStorage.setItem(`absensi_${t}_${b}`, JSON.stringify(data));
 }
 
-// Fungsi Utilitas
 function validateInput(e) {
     const val = e.target.value.toUpperCase();
     const validKeys = ['H', 'I', 'S', 'DL', 'CT', 'A', ''];
     if (!validKeys.includes(val)) { e.target.value = ""; alert("Gunakan: H, I, S, DL, CT, atau A"); }
+    simpan();
 }
 
 function showToast(msg) { let t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = ""; }, 3000); }
 
-function exportExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama")), "Rekap_Absensi.xlsx"); showToast("File sedang diunduh..."); }
+function exportExcel() { 
+    pegawai.forEach((_, i) => hitung(i, new Date(parseInt(document.getElementById('tahun').value), parseInt(document.getElementById('bulan').value)+1, 0).getDate()));
+    XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelUtama"), {raw:true}), "Rekap_Absensi.xlsx"); 
+    showToast("File diunduh..."); 
+}
+
+function eksporTXT() {
+    let teks = "";
+    const b = parseInt(document.getElementById('bulan').value);
+    const t = parseInt(document.getElementById('tahun').value);
+    const jml = new Date(t, b+1, 0).getDate();
+    pegawai.forEach((p, i) => {
+        for(let d=1; d<=jml; d++) {
+            let el = document.getElementById(`i-${i}-${d}`);
+            if(el && el.value.toUpperCase() === 'H') teks += `${p.nip}\t${t}-${String(b+1).padStart(2, '0')}-${String(d).padStart(2, '0')}\n`;
+        }
+    });
+    if(teks === "") return showToast("Data H kosong!");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([teks], {type: "text/plain"})); a.download = "ADK_Kehadiran.txt"; a.click();
+}
 
 function simpanPengaturan() {
     namaInstansi = document.getElementById('namaInstansiInput').value;
@@ -178,34 +192,23 @@ function simpanPengaturan() {
     showToast("Pengaturan disimpan!");
 }
 
-function tambah() { 
-    let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value; 
-    if(n && nip) { pegawai.push({n, nip}); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); } 
-}
+function tambah() { let n = document.getElementById('nBaru').value, nip = document.getElementById('nipBaru').value; if(n && nip) { pegawai.push({n, nip}); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Pegawai ditambah"); } }
 
-function bukaAdmin() { 
-    document.getElementById('namaInstansiInput').value = namaInstansi;
-    document.getElementById('modalAdmin').style.display='flex'; 
-    let l = document.getElementById('listAdmin'); l.innerHTML = ""; pegawai.forEach((p,i) => l.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;">${p.n} <button onclick="hapus(${i})" style="background:var(--danger); padding:2px 8px;">Hapus</button></div>`); 
-}
+function bukaAdmin() { document.getElementById('namaInstansiInput').value = namaInstansi; document.getElementById('modalAdmin').style.display='flex'; let l = document.getElementById('listAdmin'); l.innerHTML = ""; pegawai.forEach((p,i) => l.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;">${p.n} <button onclick="hapus(${i})" style="background:var(--danger); padding:2px 8px;">Hapus</button></div>`); }
 
 function hapus(i) { pegawai.splice(i,1); localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); }
 
 function imporExcel() { 
-    const file = document.getElementById('fileExcel').files[0]; 
-    if (!file) return; 
+    const file = document.getElementById('fileExcel').files[0]; if (!file) return; 
     const reader = new FileReader(); 
     reader.onload = (e) => { 
-        const data = new Uint8Array(e.target.result); 
-        const workbook = XLSX.read(data, {type: 'array'}); 
-        const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]); 
+        const json = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type: 'array'}).Sheets[0]); 
         json.forEach(row => { if(row.Nama && row.NIP) pegawai.push({n: row.Nama, nip: String(row.NIP)}); }); 
-        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Data berhasil diimpor!"); 
+        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); render(); bukaAdmin(); showToast("Impor berhasil!"); 
     }; 
     reader.readAsArrayBuffer(file); 
 }
 
-// Inisialisasi
 const b = document.getElementById('bulan'); 
 ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((m,i)=> b.innerHTML += `<option value="${i}">${m}</option>`); 
 b.value = new Date().getMonth(); updateJudul(); render();
