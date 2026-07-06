@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Absensi Pegawai</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #34495e; --secondary: #27ae60; --danger: #c0392b; --accent: #8e44ad; }
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f9; color: #333; margin: 0; }
@@ -34,7 +34,13 @@
 <div id="modalInfo" class="modal" style="display:flex;">
     <div class="modal-content">
         <h2>Selamat Datang</h2>
+         <h2>Informasi File Kerja</h2>
         <p>Aplikasi Rekapitulasi Absensi Pegawai.</p>
+        <p>1. Pilih Bulan dan Tahun yang sesuai.</p>
+        <p>2. Input data kehadiran (H, I, S, DL, CT, A).
+H=Hadir, I=Izin, S=Sakit, DL=Dinas Luar, CT=Cuti dan A=Alpa.</p>
+        <p>3. Hari Sabtu & Minggu otomatis terkunci (Warna Merah).</p>
+        <p>4. Klik tombol Cetak PDF atau Ekspor ADK.</p>
         <p>Author: <b>Jalo Tuharea</b></p>
         <button onclick="document.getElementById('modalInfo').style.display='none'" style="background:var(--primary); width:100%;">Mulai Gunakan</button>
     </div>
@@ -164,39 +170,48 @@ function validateInput(e) {
 function showToast(msg) { let t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = ""; }, 3000); }
 
 function imporExcel() { 
-    const file = document.getElementById('fileExcel').files[0]; 
+    const fileInput = document.getElementById('fileExcel');
+    const file = fileInput.files[0]; 
+    
     if (!file) {
         alert("Pilih file Excel terlebih dahulu!");
         return;
     }
 
-    const reader = new FileReader(); 
-    reader.onload = (e) => { 
-        const data = new Uint8Array(e.target.result); 
-        const workbook = XLSX.read(data, {type: 'array'}); 
-        
-        // Mengambil sheet pertama
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Konversi ke JSON dengan header: 0 agar kita bisa akses berdasarkan indeks
-        const json = XLSX.utils.sheet_to_json(worksheet, {header: 0, range: 1}); 
-        
-        // range: 1 artinya melewati baris pertama (header)
-        json.forEach(row => {
-            // row[0] adalah kolom A (Nama), row[1] adalah kolom B (NIP)
-            const nama = row[Object.keys(row)[0]];
-            const nip = row[Object.keys(row)[1]];
-            
-            if(nama && nip) {
-                pegawai.push({n: String(nama), nip: String(nip)});
-            }
-        });
+    if (typeof XLSX === 'undefined') {
+        alert("Library XLSX belum dimuat. Periksa koneksi internet Anda.");
+        return;
+    }
 
-        localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); 
-        render(); 
-        bukaAdmin(); 
-        showToast("Impor berhasil! " + json.length + " data ditambahkan."); 
+    const reader = new FileReader(); 
+    reader.onload = function(e) { 
+        try {
+            const data = new Uint8Array(e.target.result); 
+            const workbook = XLSX.read(data, {type: 'array'}); 
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+            
+            console.log("Data berhasil dibaca:", json); // Cek ini di Console
+            
+            json.forEach(row => { 
+                // Mengambil nilai berdasarkan kolom pertama dan kedua
+                const keys = Object.keys(row);
+                const nama = row[keys[0]];
+                const nip = row[keys[1]];
+                
+                if(nama && nip) {
+                    pegawai.push({n: String(nama), nip: String(nip)}); 
+                }
+            }); 
+            
+            localStorage.setItem('daftarPegawai', JSON.stringify(pegawai)); 
+            render(); 
+            bukaAdmin(); 
+            showToast("Impor berhasil!"); 
+        } catch (err) {
+            console.error("Error saat memproses Excel:", err);
+            alert("Gagal membaca file Excel. Pastikan format file benar.");
+        }
     }; 
     reader.readAsArrayBuffer(file); 
 }
